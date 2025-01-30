@@ -1,0 +1,57 @@
+# Enforce a non-interactive backend
+#backend: agg
+#figure.figsize : 6.2025, 8.8607 # xsize is 0.75 times the A4 width in inches: 8.27, y axis for (7,10) aspect ratio
+figure.figsize : 6.2025, 6.2025
+
+# Set color cycle: blue, red, green, yellow, violet, gray
+axes.prop_cycle : cycler('color', ['0C5DA5', 'FF2C00', '00B945', 'FF9500', '845B97', '474747', '9e9e9e', 'cornflowerblue', 'mediumspringgreen', 'hotpink', 'olive', 'maroon','peru'])
+
+image.cmap : "YlOrBr"
+
+# Fonts
+axes.labelsize : 12 # in pt
+xtick.labelsize : 10
+ytick.labelsize : 10
+
+# x-axis
+xtick.direction : in
+xtick.major.size : 3
+xtick.major.width : 0.5
+xtick.minor.size : 1.5
+xtick.minor.width : 0.5
+xtick.minor.visible : True
+xtick.top : True
+
+# Set y axis
+ytick.direction : in
+ytick.major.size : 3
+ytick.major.width : 0.5
+ytick.minor.size : 1.5
+ytick.minor.width : 0.5
+ytick.minor.visible : True
+ytick.right : True
+
+# Set line widths
+axes.linewidth : 0.5
+grid.linewidth : 0.5
+lines.linewidth : 1.
+
+# Remove legend frame
+legend.frameon : False
+
+# Always save as 'tight'
+savefig.bbox : tight
+savefig.pad_inches : 0.05
+axes.xmargin : 0
+axes.ymargin : 0
+
+# Use serif fonts
+# font.serif : Times
+#font.family : serif
+#font.family : Liberation Sans
+font.family : Inter
+#mathtext.fontset : dejavuserif
+
+# Use LaTeX for math formatting
+#text.usetex : True
+#text.latex.preamble : \usepackage{amsmath} \usepackage{amssymb}
