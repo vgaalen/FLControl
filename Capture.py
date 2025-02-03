@@ -165,7 +165,7 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
         FliSdk_V2.Stop(context)
         
         for i in range(count):
-            pointer = FliSdk_V2.GetRawImage(context, -1*count+i)
+            pointer = FliSdk_V2.GetRawImage(context, frame_capacity-count+i)
             pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
             buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
     else:
@@ -178,7 +178,7 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
             FliSdk_V2.Stop(context)
 
             for j in range(frame_capacity):
-                pointer = FliSdk_V2.GetRawImage(context, -1*frame_capacity+j)
+                pointer = FliSdk_V2.GetRawImage(context, j)
                 pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
                 buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
             i += frame_capacity
@@ -189,7 +189,7 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
             time.sleep((count-i)/fps)
         FliSdk_V2.Stop(context)
         for j in range(count-i):
-            pointer = FliSdk_V2.GetRawImage(context, -1*(count-i)+j)
+            pointer = FliSdk_V2.GetRawImage(context, frame_capacity-(count-i)+j)
             pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
             buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
 
