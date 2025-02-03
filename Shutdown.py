@@ -9,15 +9,16 @@ import time
 def exit(context, message="", error=True):
     FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, 20)
 
-    FliSdk_V2.Stop()
+    FliSdk_V2.Stop(context)
 
     res, temp = FliSdk_V2.FliCredTwo.GetTempSnake(context)
+    print(res,temp)
     while temp < 15 or not res:
         time.sleep(1)
         res, temp = FliSdk_V2.FliCredTwo.GetTempSnake(context)
         print(res, temp)
     
-    FliSdk_V2.Exit()
+    FliSdk_V2.Exit(context)
 
     if error:
         raise ValueError(message)
@@ -54,4 +55,4 @@ if __name__=="__main__":
     FliSdk_V2.SetMode(context, FliSdk_V2.Mode.Full)
     FliSdk_V2.Update(context)
 
-    exit()
+    exit(context, error=False)

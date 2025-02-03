@@ -5,22 +5,32 @@ import FliSdk_V2
 
 from os import PathLike
 import time
+import ctypes
 
 from astropy.io import fits
 import numpy as np
 
 from Shutdown import exit
+#def exit(context, mes, error=False):
+#    print(error, mes)
+#    if error:
+#        raise ValueError("")
 
 
 
 ############
 # Settings #
 ############
+dark_name = "data/Dark.fits" # the file name (or absolute path) to write the dark images to
+bias_name = "data/Bias.fits"
+
 Temperature = -15 # C
 Gain = "High"
 FPS = 100
 biasFrames = 100
 darkFrames = 100
+
+
 
 def check(status):
     if not status:
@@ -99,7 +109,8 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
     frame_capacity = FliSdk_V2.GetImagesCapacity(context)
     
     width, height = FliSdk_V2.GetCurrentImageDimension(context)
-    buffer = np.zeros((count, width, height))
+    buffer = np.zeros((count, height, width))
+    ArrayType = ctypes.c_uint16 * width * height
 
     FliSdk_V2.FliCredTwo.SetConversionGain(context,gain)
     res, gain = FliSdk_V2.FliCredTwo.GetConversionGain(context)
@@ -117,59 +128,41 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
     print("Starting Capture...")
     TimeStart = time.gmtime()
     if count < frame_capacity:
-        # FliSdk_V2.Start(context) #### SWITCH TO EnableGrabN
-        # time.sleep(fps*count)
-        # FliSdk_V2.Stop(context)
-        # for i in range(count):
-        #     buffer[i] = FliSdk_V2.GetRawImage(context,-1*i)
         FliSdk_V2.EnableGrabN(context, count)
         FliSdk_V2.Start(context)
         while FliSdk_V2.IsGrabNFinished(context) == False:
             time.sleep(count/fps)
         FliSdk_V2.Stop(context)
-#        for i in range(count):
-#            buffer[i] = FliSdk_V2.GetRawImage(context,-1*i)
-#        print(FliSdk_V2.GetAvailableSaveFormats(context)[1])
-        res = FliSdk_V2.SaveBuffer(context,"./temp.fits", frame_capacity-count-1, frame_capacity-1)
-        if not res:
-            print("Lost Connection")
-            exit(context, "Lost Connection")
-        buffer = fits.open("temp.fits")[0].data
+        
+        for i in range(count):
+            pointer = FliSdk_V2.GetRawImage(context, -1*count+i)
+            pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+            buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
     else:
         i = 0
         while i<count-frame_capacity:
-            # FliSdk_V2.Start(context)
-            # time.sleep(fps*frame_capacity)
-            # FliSdk_V2.Stop(context)
             FliSdk_V2.EnableGrabN(context, frame_capacity)
             FliSdk_V2.Start(context)
             while FliSdk_V2.IsGrabNFinished(context) == False:
                 time.sleep(frame_capacity/fps)
             FliSdk_V2.Stop(context)
-#            for j in range(frame_capacity):
-#                buffer[i] = FliSdk_V2.GetRawImage(context,-1*j)
-#                i+=1
-            res = FliSdk_V2.SaveBuffer(context, 'temp.fits', 0, frame_capacity-1)
-            if not res:
-                print("Lost Connection")
-                exit(context, "Lost Connection")
-            buffer[i:i+frame_capacity] = fits.open("temp.fits")[0].data
-        # FliSdk_V2.Start(context)
-        # time.sleep(fps*(count-i))
-        # FliSdk_V2.Stop(context)
+
+            for j in range(frame_capacity):
+                pointer = FliSdk_V2.GetRawImage(context, -1*frame_capacity+j)
+                pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+                buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
+            i += frame_capacity
+	
         FliSdk_V2.EnableGrabN(context, (count-i))
         FliSdk_V2.Start(context)
         while FliSdk_V2.IsGrabNFinished(context) == False:
             time.sleep((count-i)/fps)
         FliSdk_V2.Stop(context)
-#        for j in range(count-i):
-#            buffer[i+j] = FliSdk_V2.GetRawImage(context,-1*j)
-        print(FliSdk_V2.GetAvailableSaveFormats)
-        res = FliSdk_V2.SaveBuffer(context, 'temp.fits', frame_capacity-count-1, frame_capacity-1)
-        if not res:
-            print("Lost Connection")
-            exit(context, "Lost Connection")
-        buffer[i:] = fits.open("temp.fits")[0].data
+        for j in range(count-i):
+            pointer = FliSdk_V2.GetRawImage(context, -1*(count-i)+j)
+            pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+            buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
+
     TimeStop = time.gmtime()
     print("Done")
 
@@ -211,7 +204,7 @@ if __name__=="__main__":
 
     check(FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, Temperature))
 
-    get_bias(context,'test_bias.fits', biasFrames, Temperature, Gain)
-    get_dark(context, 'test_dark.fits', darkFrames, FPS, Temperature, Gain)
+    get_bias(context, bias_name, biasFrames, Temperature, Gain)
+    get_dark(context, dark_name, darkFrames, FPS, Temperature, Gain)
 
     exit(context, "Clean Exit")
