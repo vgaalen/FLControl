@@ -8,6 +8,7 @@ import FliSdk_V2
 from os import PathLike
 from os.path import isdir
 import time
+from datetime import datetime
 import ctypes
 from pathlib import Path
 import subprocess
@@ -56,7 +57,7 @@ def write_metadata():
 
     log("==============================\n")
     log(f"{'Starting Run':.^30}\n")
-    log(f"{f'{time.gmtime():%Y-%m-%d %H:%M}':.^30}\n")
+    log(f"{f'{datetime.now():%Y-%m-%d %H:%M}':.^30}\n")
     log("==============================\n")
 
 def log(message):
@@ -156,44 +157,49 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
     res, temp = FliSdk_V2.FliCredTwo.GetTempSnake(context)
     
     print("Starting Capture...")
-    TimeStart = time.gmtime()
-    if count < frame_capacity:
-        FliSdk_V2.EnableGrabN(context, count)
-        FliSdk_V2.Start(context)
-        while FliSdk_V2.IsGrabNFinished(context) == False:
-            time.sleep(count/fps)
-        FliSdk_V2.Stop(context)
-        
-        for i in range(count):
-            pointer = FliSdk_V2.GetRawImage(context, frame_capacity-count+i)
-            pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-            buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
-    else:
-        i = 0
-        while i<count-frame_capacity:
-            FliSdk_V2.EnableGrabN(context, frame_capacity)
-            FliSdk_V2.Start(context)
-            while FliSdk_V2.IsGrabNFinished(context) == False:
-                time.sleep(frame_capacity/fps)
-            FliSdk_V2.Stop(context)
+    TimeStart = datetime.now()
+    #if count < frame_capacity:
+    #FliSdk_V2.EnableGrabN(context, count)
+    FliSdk_V2.Start(context)
+    #while FliSdk_V2.IsGrabNFinished(context) == False:
+    #    time.sleep(count/fps)
+    #FliSdk_V2.Stop(context)
+    
+    for i in range(count):
+        t1 = datetime.now()
+        #pointer = FliSdk_V2.GetRawImage(context, frame_capacity-count+i) ### PRODUCES ONLY 0's
+        #pointer = FliSdk_V2.GetRawImage(context, -1*count+i) ### RETURNS IDENTICAL IMAGES
+        pointer = FliSdk_V2.GetRawImage(context, -1)
+        pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+        buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
+        t2 = datetime.now()
+        time.sleep(1/fps - (t2-t1).seconds)
+    # else:
+    #     i = 0
+    #     while i<count-frame_capacity:
+    #         FliSdk_V2.EnableGrabN(context, frame_capacity)
+    #         FliSdk_V2.Start(context)
+    #         while FliSdk_V2.IsGrabNFinished(context) == False:
+    #             time.sleep(frame_capacity/fps)
+    #         FliSdk_V2.Stop(context)
 
-            for j in range(frame_capacity):
-                pointer = FliSdk_V2.GetRawImage(context, j)
-                pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-                buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
-            i += frame_capacity
+    #         for j in range(frame_capacity):
+    #             pointer = FliSdk_V2.GetRawImage(context, j)
+    #             pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+    #             buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
+    #         i += frame_capacity
 	
-        FliSdk_V2.EnableGrabN(context, (count-i))
-        FliSdk_V2.Start(context)
-        while FliSdk_V2.IsGrabNFinished(context) == False:
-            time.sleep((count-i)/fps)
-        FliSdk_V2.Stop(context)
-        for j in range(count-i):
-            pointer = FliSdk_V2.GetRawImage(context, frame_capacity-(count-i)+j)
-            pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-            buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
+    #     FliSdk_V2.EnableGrabN(context, (count-i))
+    #     FliSdk_V2.Start(context)
+    #     while FliSdk_V2.IsGrabNFinished(context) == False:
+    #         time.sleep((count-i)/fps)
+    #     FliSdk_V2.Stop(context)
+    #     for j in range(count-i):
+    #         pointer = FliSdk_V2.GetRawImage(context, frame_capacity-(count-i)+j)
+    #         pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+    #         buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
 
-    TimeStop = time.gmtime()
+    TimeStop = datetime.now()
     print("Done")
 
     write_fits(writeto, buffer, TimeStart, TimeStop, temp, fps,
