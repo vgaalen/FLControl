@@ -1,11 +1,16 @@
 import sys
 print(sys.version)
 
+FLControl_version = "v1"
+
 import FliSdk_V2
 
 from os import PathLike
+from os.path import isdir
 import time
 import ctypes
+from pathlib import Path
+import subprocess
 
 from astropy.io import fits
 import numpy as np
@@ -37,13 +42,38 @@ def check(status):
         print("Error while setting camera.")
         exit(context)
     return
+
+def write_metadata():
+    Path(f"data/").mkdir(parents=True, exist_ok=True)
+
+    hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+    url = subprocess.check_output(['git', 'remote', '-v']).decode('ascii').strip()
+    url = [z for y in url.split("@") for z in y.split("(")][1][:-1]
+
+    with open("data/readme.txt", 'w') as readme:
+        readme.write("These results were generated using the following codebase:\n")
+        readme.write(f"{url}/{hash}   -   {FLControl_version}")
+
+    log("==============================\n")
+    log(f"{'Starting Run':.^30}\n")
+    log(f"{f'{time.gmtime():%Y-%m-%d %H:%M}':.^30}\n")
+    log("==============================\n")
+
+def log(message):
+    with open(f"data/log.txt", "a") as f:
+        f.write(message)
+
+def print2(message):
+    print(message)
+    log(message+"\n")
+
     
 
 def write_fits(file: PathLike, array: np.ndarray, TimeStart: time.struct_time, TimeStop: time.struct_time, Temp: int, FPS: int,
                IntTime: float, Gain: float, HDR: bool, Note: str):
     hdr = fits.Header()
-    hdr['TIME-OBS']=f"{TimeStart}"
-    hdr['TIME-END']=f"{TimeStop}"
+    hdr['TIME-OBS']=f"{TimeStart:%Y-%m-%d %H:%M}"
+    hdr['TIME-END']=f"{TimeStop:%Y-%m-%d %H:%M}"
     hdr['TEMP-DET']=f"{Temp}"
     hdr['FPS']=f"{FPS}"
     hdr['EXP-TIME']=f"{IntTime}"
