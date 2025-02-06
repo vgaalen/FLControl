@@ -22,22 +22,6 @@ from Shutdown import exit
 #    if error:
 #        raise ValueError("")
 
-
-
-############
-# Settings #
-############
-dark_name = "data/Dark.fits" # the file name (or absolute path) to write the dark images to
-bias_name = "data/Bias.fits"
-
-Temperature = -15 # C
-Gain = "High"
-FPS = 100
-biasFrames = 100
-darkFrames = 100
-
-
-
 def check(status):
     if not status:
         print("Error while setting camera.")
@@ -87,67 +71,38 @@ def write_fits(file: PathLike, array: np.ndarray, TimeStart: time.struct_time, T
     
 
 def get_bias(context, file: PathLike, count: int, temp: int, gain: str):
-
     res, max_fps = FliSdk_V2.FliCredTwo.GetMaxFpsUsb(context)
-    #max_fps = FliSdk_V2.FliSerialCamera.GetFpsMax(context)
-    FliSdk_V2.FliSerialCamera.SetFps(context, max_fps)
-    res, fps = FliSdk_V2.FliSerialCamera.GetFps(context)
-    if np.abs(fps - max_fps) > 1:
-        print(f"Camera FPS set to {fps}, instead of the desired {max_fps}. Exiting...")
-        exit(context)
-    print(f"FPS Set to {fps}")
-    
-    FliSdk_V2.FliCredTwo.EnableRawImages(context, True)
-    FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, temp)
+    check(res)
+    get_frames(context, count, max_fps, gain, file, comment="Bias Frames")
 
-    get_frames(context, count, fps, gain, file, comment="Bias Frames")
-
-
-def get_bias2(context, file: PathLike, count: int, temp:int, gain: str):
-    FliSdk_V2.FliCredTwo.EnableRawImages(context, True)
-    FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, temp)
-
-    FliSdk_V2.FliCredTwo.SetConversionGain(context, gain)
-    res, gain = FliSdk_V2.FliCredTwo.GetConversionGain(context)
-
-    while FliSdk_V2.FliCredTwo.GetTempSnakeSetPoint(context) != FliSdk_V2.FliCredTwo.GetTempSnake(context):
-        time.sleep(1) # Sleep until temp matches the setpoint
-    res, temp = FliSdk_V2.FliCredTwo.GetTempSnake(context)
-
-    TimeStart = time.gmtime()
-    FliSdk_V2.FliCredTwo.BuildBiasHdrC1(context)
-    TimeStop = time.gmtime()
-
-    FliSdk_V2.FliCredTwo.SendBiasHdrC1File(context, "temp.fits")
-    buffer = fits.open("temp.fits")[0].data
-    write_fits(file, buffer, TimeStart, TimeStop, temp, 0, 0, gain, True, "Auto Bias Capture")
 
 def get_dark(context, file: PathLike, count: int, fps: float, temp: int, gain: str):
     res,max_fps = FliSdk_V2.FliCredTwo.GetMaxFpsUsb(context)
+    check(res)
     if fps > max_fps:
         print("FPS higher than max allowed value")
-        exit(context)
-    FliSdk_V2.FliSerialCamera.SetFps(context, fps)
-    res,fps = FliSdk_V2.FliSerialCamera.GetFps(context)
-    
-    FliSdk_V2.FliCredTwo.EnableRawImages(context, True)
-    FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, temp)
-
+        exit(context)   
     get_frames(context, count, fps, gain, file, comment="Bias Frames")
 
 
-def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comment=""):
+def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:PathLike, comment=""):
+    check(FliSdk_V2.FliCredTwo.EnableRawImages(context, True))
+    check(FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, temp))
+    check(FliSdk_V2.FliSerialCamera.SetFps(context, fps))
+    check(FliSdk_V2.FliCredTwo.SetConversionGain(context,gain))
+    check(FliSdk_V2.FliCredTwo.SetHdrCalibrationOff(context))
+
+    res,fps = FliSdk_V2.FliSerialCamera.GetFps(context)
+    check(res)
+    res, gain = FliSdk_V2.FliCredTwo.GetConversionGain(context)
+    check(res)
+    res, HDR = FliSdk_V2.FliCredTwo.GetHdrState(context)
+    check(res)
     frame_capacity = FliSdk_V2.GetImagesCapacity(context)
     
     width, height = FliSdk_V2.GetCurrentImageDimension(context)
     buffer = np.zeros((count, height, width))
     ArrayType = ctypes.c_uint16 * width * height
-
-    FliSdk_V2.FliCredTwo.SetConversionGain(context,gain)
-    res, gain = FliSdk_V2.FliCredTwo.GetConversionGain(context)
-
-    FliSdk_V2.FliCredTwo.SetHdrCalibrationOff(context)
-    res, HDR = FliSdk_V2.FliCredTwo.GetHdrState(context)
 
     while np.abs(FliSdk_V2.FliCredTwo.GetTempSnakeSetPoint(context)[1] - FliSdk_V2.FliCredTwo.GetTempSnake(context)[1]) > 0.5:
         print("Cooling Down...")
@@ -158,12 +113,7 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
     
     print("Starting Capture...")
     TimeStart = datetime.now()
-    #if count < frame_capacity:
-    #FliSdk_V2.EnableGrabN(context, count)
-    FliSdk_V2.Start(context)
-    #while FliSdk_V2.IsGrabNFinished(context) == False:
-    #    time.sleep(count/fps)
-    #FliSdk_V2.Stop(context)
+    check(FliSdk_V2.Start(context))
     
     for i in range(count):
         t1 = datetime.now()
@@ -174,31 +124,8 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
         buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
         t2 = datetime.now()
         time.sleep(1/fps - (t2-t1).seconds)
-    # else:
-    #     i = 0
-    #     while i<count-frame_capacity:
-    #         FliSdk_V2.EnableGrabN(context, frame_capacity)
-    #         FliSdk_V2.Start(context)
-    #         while FliSdk_V2.IsGrabNFinished(context) == False:
-    #             time.sleep(frame_capacity/fps)
-    #         FliSdk_V2.Stop(context)
 
-    #         for j in range(frame_capacity):
-    #             pointer = FliSdk_V2.GetRawImage(context, j)
-    #             pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-    #             buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
-    #         i += frame_capacity
-	
-    #     FliSdk_V2.EnableGrabN(context, (count-i))
-    #     FliSdk_V2.Start(context)
-    #     while FliSdk_V2.IsGrabNFinished(context) == False:
-    #         time.sleep((count-i)/fps)
-    #     FliSdk_V2.Stop(context)
-    #     for j in range(count-i):
-    #         pointer = FliSdk_V2.GetRawImage(context, frame_capacity-(count-i)+j)
-    #         pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-    #         buffer[i+j] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
-
+    check(FliSdk_V2.Stop(context))
     TimeStop = datetime.now()
     print("Done")
 
@@ -206,8 +133,7 @@ def get_frames(context, count: int, fps: int, gain: str, writeto:PathLike, comme
                1/fps, gain, HDR, comment)
 
 
-if __name__=="__main__":
-
+def Initialize():
     context = FliSdk_V2.Init()
 
     print("Detection of grabbers...")
@@ -237,8 +163,24 @@ if __name__=="__main__":
     
     check(FliSdk_V2.SetMode(context, FliSdk_V2.Mode.Full))
     check(FliSdk_V2.Update(context))
+    return context
 
-    check(FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, Temperature))
+
+if __name__=="__main__":
+
+    ############
+    # Settings #
+    ############
+    dark_name = "data/Dark.fits" # the file name (or absolute path) to write the dark images to
+    bias_name = "data/Bias.fits"
+
+    Temperature = -15 # C
+    Gain = "High"
+    FPS = 100
+    biasFrames = 100
+    darkFrames = 100
+
+    context = Initialize()
 
     get_bias(context, bias_name, biasFrames, Temperature, Gain)
     get_dark(context, dark_name, darkFrames, FPS, Temperature, Gain)

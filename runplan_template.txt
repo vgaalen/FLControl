@@ -1,0 +1,15 @@
+type,exptime,temp,gain,num_frames,name,status
+bias,,-15,'High',1000,'Bias1',false
+bias,,-10,'High',1000,'Bias2',false
+dark,10,-15,'High',100,'Dark1a',false
+dark,20,-15,'High',100,'Dark1b',false
+dark,50,-15,'High',5,'Dark1c',false
+dark,10,-10,'High',100,'Dark2a',false
+dark,20,-10,'High',100,'Dark2b',false
+dark,50,-10,'High',5,'Dark2c',false
+dark,10,-5,'High',100,'Dark3a',false
+dark,20,-5,'High',100,'Dark3b',false
+dark,50,-5,'High',5,'Dark3c',false
+
+# Change these values as desired and change the filename to runplan.txt
+# Then run Execute.py to capture the images.
