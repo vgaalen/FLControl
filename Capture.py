@@ -10,6 +10,7 @@ from os.path import isdir
 import time
 from datetime import datetime
 import ctypes
+from typing import Optional
 from pathlib import Path
 import subprocess
 
@@ -27,6 +28,31 @@ def check(status):
         print("Error while setting camera.")
         exit(context)
     return
+
+def saferun(func: function, *args, tries: Optional[int]):
+    try:
+        res, *args = func(*args)
+        i=0
+        while not res and i<tries:
+            res, *args = func(*args)
+            i += 1
+        if res:
+            return args
+        else:
+            print(f"Error while running {func}.")
+            exit(context)
+    except:
+        res = func(*args)
+        i=0
+        while not res and i<tries:
+            res = func(*args)
+            i += 1
+        if res:
+            return
+        else:
+            print(f"Error while running {func}.")
+            exit(context)
+
 
 def write_metadata():
     Path(f"data/").mkdir(parents=True, exist_ok=True)
@@ -71,33 +97,32 @@ def write_fits(file: PathLike, array: np.ndarray, TimeStart: time.struct_time, T
     
 
 def get_bias(context, file: PathLike, count: int, temp: int, gain: str):
-    res, max_fps = FliSdk_V2.FliCredTwo.GetMaxFpsUsb(context)
-    check(res)
-    get_frames(context, count, max_fps, gain, file, comment="Bias Frames")
+    #res, max_fps = FliSdk_V2.FliCredTwo.GetMaxFpsUsb(context)
+    #check(res)
+    max_fps = saferun(FliSdk_V2.FliCredTwo.GetMaxFpsUsb, context)
+    get_frames(context, count, temp, max_fps, gain, file, comment="Bias Frames")
 
 
 def get_dark(context, file: PathLike, count: int, fps: float, temp: int, gain: str):
-    res,max_fps = FliSdk_V2.FliCredTwo.GetMaxFpsUsb(context)
-    check(res)
+    # res,max_fps = FliSdk_V2.FliCredTwo.GetMaxFpsUsb(context)
+    # check(res)
+    max_fps = saferun(FliSdk_V2.FliCredTwo.GetMaxFpsUsb, context)
     if fps > max_fps:
         print("FPS higher than max allowed value")
         exit(context)   
-    get_frames(context, count, fps, gain, file, comment="Bias Frames")
+    get_frames(context, count, temp, fps, gain, file, comment="Bias Frames")
 
 
 def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:PathLike, comment=""):
-    check(FliSdk_V2.FliCredTwo.EnableRawImages(context, True))
-    check(FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint(context, temp))
-    check(FliSdk_V2.FliSerialCamera.SetFps(context, fps))
-    check(FliSdk_V2.FliCredTwo.SetConversionGain(context,gain))
-    check(FliSdk_V2.FliCredTwo.SetHdrCalibrationOff(context))
+    saferun(FliSdk_V2.FliCredTwo.EnableRawImages,context, True)
+    saferun(FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint,context, temp)
+    saferun(FliSdk_V2.FliSerialCamera.SetFps,context, fps)
+    saferun(FliSdk_V2.FliCredTwo.SetConversionGain,context,gain)
+    saferun(FliSdk_V2.FliCredTwo.SetHdrCalibrationOff,context)
 
-    res,fps = FliSdk_V2.FliSerialCamera.GetFps(context)
-    check(res)
-    res, gain = FliSdk_V2.FliCredTwo.GetConversionGain(context)
-    check(res)
-    res, HDR = FliSdk_V2.FliCredTwo.GetHdrState(context)
-    check(res)
+    fps = saferun(FliSdk_V2.FliSerialCamera.GetFps,context)
+    gain = saferun(FliSdk_V2.FliCredTwo.GetConversionGain,context)
+    HDR = saferun(FliSdk_V2.FliCredTwo.GetHdrState,context)
     frame_capacity = FliSdk_V2.GetImagesCapacity(context)
     
     width, height = FliSdk_V2.GetCurrentImageDimension(context)
@@ -109,11 +134,11 @@ def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:Pa
         print(f"T = {FliSdk_V2.FliCredTwo.GetTempSnake(context)[1]}")
         time.sleep(1) # Sleep until temp matches the setpoint
     print("Temperature Setpoint Reached")
-    res, temp = FliSdk_V2.FliCredTwo.GetTempSnake(context)
+    temp = saferun(FliSdk_V2.FliCredTwo.GetTempSnake,context)
     
     print("Starting Capture...")
     TimeStart = datetime.now()
-    check(FliSdk_V2.Start(context))
+    saferun(FliSdk_V2.Start,context)
     
     for i in range(count):
         t1 = datetime.now()
@@ -125,7 +150,7 @@ def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:Pa
         t2 = datetime.now()
         time.sleep(1/fps - (t2-t1).seconds)
 
-    check(FliSdk_V2.Stop(context))
+    saferun(FliSdk_V2.Stop,context)
     TimeStop = datetime.now()
     print("Done")
 
@@ -159,10 +184,10 @@ def Initialize():
         i = i + 1
     cameraIndex = int(input("Which camera to use? (0, 1, ...) "))
     print("Setting camera: " + listOfCameras[cameraIndex])
-    check(FliSdk_V2.SetCamera(context, listOfCameras[cameraIndex]))
+    saferun(FliSdk_V2.SetCamera,context, listOfCameras[cameraIndex])
     
-    check(FliSdk_V2.SetMode(context, FliSdk_V2.Mode.Full))
-    check(FliSdk_V2.Update(context))
+    saferun(FliSdk_V2.SetMode,context, FliSdk_V2.Mode.Full)
+    saferun(FliSdk_V2.Update,context)
     return context
 
 
