@@ -789,6 +789,13 @@ class FliCredTwo:
 	def BuildFlatHdrC2(self, context):
 		res = LibLoader.lib.FliCredTwo_buildFlatHdrC2_V2(context)
 		return res
+    
+    #------------------------------------------------------------
+#	LibLoader.lib.FliCredTwo_buildBiasHdrC1_V2.argtypes = [ctypes.c_void_p]
+#	LibLoader.lib.FliCredTwo_buildBiasHdrC1_V2.restype = ctypes.c_bool
+#	def BuildBiasHdrC1(self, context):
+#		res = LibLoader.lib.FliCredTwo_buildBiasHdrC1_V2(context)
+#		return res
 
 	#------------------------------------------------------------
 	LibLoader.lib.FliCredTwo_sendBiasHdrC1FromUrl_V2.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
