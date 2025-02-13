@@ -83,12 +83,12 @@ def print2(message):
 def write_fits(file: PathLike, array: np.ndarray, TimeStart: time.struct_time, TimeStop: time.struct_time, Temp: int, FPS: int,
                IntTime: float, Gain: float, HDR: bool, Note: str):
     hdr = fits.Header()
-    hdr['TIME-OBS']=f"{TimeStart:%Y-%m-%d %H:%M}"
-    hdr['TIME-END']=f"{TimeStop:%Y-%m-%d %H:%M}"
-    hdr['TEMP-DET']=f"{Temp}"
-    hdr['FPS']=f"{FPS}"
-    hdr['EXP-TIME']=f"{IntTime}"
-    hdr['GAIN']=f"{Gain}"
+    hdr['TIME-OBS']= (f"{TimeStart:%Y-%m-%d %H:%M}", "Starting Time of Observation (local time)")
+    hdr['TIME-END']= (f"{TimeStop:%Y-%m-%d %H:%M}", "End Time of Observation (local time)")
+    hdr['TEMP-DET']= (f"{Temp+274.15}", "Detector Temperature in Kelvin") # Convert temperature to Kelvin
+    hdr['FPS']= (f"{FPS}", "Framerate in Hz")
+    hdr['EXP-TIME']= (f"{IntTime}", "Exposure Time in Seconds")
+    hdr['GAIN']= (f"{Gain}", "Camera Gain Setting")
     hdr['HDR']=f"{HDR}"
     hdr['COMMENT']=Note
 
@@ -118,7 +118,7 @@ def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:Pa
     saferun(FliSdk_V2.FliCredTwo.EnableRawImages,context, True)
     saferun(FliSdk_V2.FliCredTwo.SetTempSnakeSetPoint,context, temp)
     saferun(FliSdk_V2.FliSerialCamera.SetFps,context, fps)
-    #saferun(FliSdk_V2.FliCredTwo.SetConversionGain,context,gain)
+    saferun(FliSdk_V2.FliCredTwo.SetConversionGain,context,gain)
     saferun(FliSdk_V2.FliCredTwo.SetHdrCalibrationOff,context)
 
     fps = saferun(FliSdk_V2.FliSerialCamera.GetFps,context)[0]
@@ -151,7 +151,7 @@ def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:Pa
     
     for i in range(count):
         saferun(FliSdk_V2.Start,context)
-        time.sleep(1/fps)# - (t2-t1).seconds)
+        time.sleep(1/fps+1)# - (t2-t1).seconds)
         saferun(FliSdk_V2.Stop,context)
         #t1 = datetime.now()
         #pointer = FliSdk_V2.GetRawImage(context, frame_capacity-count+i) ### PRODUCES ONLY 0's
