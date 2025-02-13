@@ -132,8 +132,11 @@ def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:Pa
     ArrayType = ctypes.c_uint16 * width * height
 
     while np.abs(FliSdk_V2.FliCredTwo.GetTempSnakeSetPoint(context)[1] - FliSdk_V2.FliCredTwo.GetTempSnake(context)[1]) > 0.5:
-        print("Cooling Down...")
         print(f"T = {FliSdk_V2.FliCredTwo.GetTempSnake(context)[1]}")
+        if (FliSdk_V2.FliCredTwo.GetTempSnakeSetPoint(context)[1] - FliSdk_V2.FliCredTwo.GetTempSnake(context)[1]) > 0:
+            print("Warming Up...")
+        else:
+            print("Cooling Down...")
         time.sleep(1) # Sleep until temp matches the setpoint
     print("Temperature Setpoint Reached")
     temp = saferun(FliSdk_V2.FliCredTwo.GetTempSnake,context)[0]
@@ -141,19 +144,25 @@ def get_frames(context, count: int, temp: float, fps: int, gain: str, writeto:Pa
     print("Starting Capture...")
     TimeStart = datetime.now()
     print(TimeStart)
-    saferun(FliSdk_V2.Start,context)
+    #saferun(FliSdk_V2.Start,context)
+
+    t1 = datetime.now()
+    t2 = datetime.now()
     
     for i in range(count):
-        t1 = datetime.now()
+        saferun(FliSdk_V2.Start,context)
+        time.sleep(1/fps)# - (t2-t1).seconds)
+        saferun(FliSdk_V2.Stop,context)
+        #t1 = datetime.now()
         #pointer = FliSdk_V2.GetRawImage(context, frame_capacity-count+i) ### PRODUCES ONLY 0's
         #pointer = FliSdk_V2.GetRawImage(context, -1*count+i) ### RETURNS IDENTICAL IMAGES
         pointer = FliSdk_V2.GetRawImage(context, -1)
         pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-        buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
-        t2 = datetime.now()
-        time.sleep(1/fps - (t2-t1).seconds)
+        # buffer[i] = np.ndarray((height, width), dtype=np.uint16, buffer=pa.contents)
+        buffer[i] = np.frombuffer(pa.contents, dtype=np.uint16).reshape((height,width))
+        #t2 = datetime.now() 
 
-    saferun(FliSdk_V2.Stop,context)
+    #saferun(FliSdk_V2.Stop,context)
     TimeStop = datetime.now()
     print("Done")
     print(TimeStop)
