@@ -42,8 +42,13 @@ class CBLUE(FLI_CAMERA):
         self.setGain = cam_func(self, FliSdk.FliCblueSfnc.SetGain)
         self.getMode = cam_func(self, FliSdk.FliCblueOne.GetUserSetSelector)
         self.setMode = cam_func(self, FliSdk.FliCblueOne.SetUserSetSelector)
-        self.getShutter = cam_func(self, FliSdk.FliCblueSfnc.GetSensorShutterMode)
-        self.setShutter = cam_func(self, FliSdk.FliCblueSfnc.SetSensorShutterMode)
+
+        FliSdk.FliCblueOne.SetDeviceTemperatureSelector(self.context, 0) # set temperature location to sensor
+
+        self.ShutterMap = {'Global': 0, 'Rolling': 1, 'GlobalReset': 2}
+        self.HdrMap = {'Mono8': 0, 'Mono10': 1, 'Mono12': 2}
+
+        input()
         # TODO: HDR?, Binning, reboot
 
     def start(self):
@@ -68,6 +73,36 @@ class CBLUE(FLI_CAMERA):
             status.append(FliSdk.FliCblueOne.SetSparseHeight(self.context, h))
             status.append(FliSdk.FliCblueOne.SetSparseOffsetX(self.context, x0))
             status.append(FliSdk.FliCblueOne.SetSparseOffsetY(self.context, y0))
+    
+    def setShutter(self, shutter):
+        if shutter in self.ShutterMap:
+            res = False
+            while not res:
+                res = FliSdk.FliCblueSfnc.GetSensorShutterMode(self.context, self.ShutterMap[shutter])
+        else:
+            raise NotImplementedError("")
+    
+    def getShutter(self):
+        res = False
+        while not res:
+            res, val = FliSdk.FliCblueSfnc.GetSensorShutterMode(self.context)
+        for key, ind in self.ShutterMap:
+            if ind==val:
+                return key
+    
+    def setHdr(self, mode):
+        if mode in self.HdrMap:
+            FliSdk.FliCblueSfnc.SetPixelFormat(self.context, self.HdrMap[mode])
+        else:
+            raise NotImplementedError("")
+    
+    def getHdr(self):
+        res, val = FliSdk.FliCblueSfnc.GetPixelFormat(self.context)
+        for key, ind in self.ShutterMap:
+            if ind==val:
+                return key
+
+
 
 class CRED(FLI_CAMERA):
     def __init__(self, context, interface):
@@ -79,9 +114,14 @@ class CRED(FLI_CAMERA):
         self.setTemp = cam_func(self, self.interface.SetSensorTemp)
         self.getGain = cam_func(self, self.interface.GetConversionGain)
         self.setGain = cam_func(self, self.interface.SetConversionGain) 
-        self.getShutter = cam_func(self, FliSdk.FliCblueSfnc.GetSensorShutterMode)
-        self.setShutter = cam_func(self, FliSdk.FliCblueSfnc.SetSensorShutterMode)
-        # TODO: HDR, Binning, reboot
+        #self.getShutter = cam_func(self, FliSdk.FliCblueSfnc.GetSensorShutterMode)
+        #self.setShutter = cam_func(self, FliSdk.FliCblueSfnc.SetSensorShutterMode)
+        self.setHdr = cam_func(self, self.interface.EnableHdr, convert=bool)
+        self.getHdr = cam_func(self, self.interface.GetHdrState)
+        # TODO: Binning, reboot
+
+        self.HdrMap = {'True': 1, 'False': 0}
+        self.ShutterMap = {'Not Supported': 0}
     
     def start(self):
         #FliSdk.FliCred.EnableLed(self.context, False)
@@ -95,6 +135,12 @@ class CRED(FLI_CAMERA):
     
     def setRoi(self, status, x0, y0, w, h): #TODO: set region of interest
         raise NotImplementedError("This function is not available on CRED")
+    def getRoi():
+        raise NotImplementedError("")
+    def getShutter():
+        raise NotImplementedError("")
+    def setShutter():
+        raise NotImplementedError("")
 
 # Seems like the is no reason to separate out Cred, CredOne, CredTwo, CredThree
 # class CRED2(CRED):
@@ -141,14 +187,18 @@ class DAO_CAM:
 
 
 class cam_func:
-    def __init__(self, cam, func):
+    def __init__(self, cam, func, convert=False):
         self.func = func
         self.cam = cam
+        self.convert = convert
     
     def __call__(self, *args, **kwargs):
         res = [False]
         while not res[0]:
-            res = [self.func(self.cam.context, *args, **kwargs)]
+            if self.convert is not False:
+                res = [self.func(self.cam.context, *[self.convert(x) for x in args], **kwargs)]
+            else:
+                res = [self.func(self.cam.context, *args, **kwargs)]
         return res[1:].unpack()
 
 class dao_func:
@@ -186,5 +236,12 @@ def Start():
     
     if FliSdk.IsClueOne(context):
         return CBLUE(context)
-    elif FliSdk.IsCred(context) or FliSdk.IsCredOne(context) or FliSdk.IsCredTwo(context) or FliSdk.IsCredThree(context):
-        return CRED(context)
+    elif FliSdk.IsCred(context):
+        return CRED(context, FliSdk.FliCred)
+    elif FliSdk.IsCredOne(context):
+        return CRED(context, FliSdk.FliCredOne)
+    elif FliSdk.IsCredTwo(context):
+        return CRED(context, FliSdk.FliCredTwo)
+    elif FliSdk.IsCredThree(context):
+        return CRED(context, FliSdk.FliCredThree)
+

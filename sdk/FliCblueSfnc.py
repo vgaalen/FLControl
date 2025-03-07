@@ -35,6 +35,14 @@ class FliCblueSfnc:
 		val = ctypes.c_int(0)
 		res = LibLoader.lib.FliCblueSfnc_getSensorShutterMode_V2(context, ctypes.byref(val))
 		return res, val.value
+	
+	#------------------------------------------------------------
+	LibLoader.lib.FliCblueSfnc_getSensorShutterMode_V2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+	LibLoader.lib.FliCblueSfnc_getSensorShutterMode_V2.restype = ctypes.c_bool
+	def SetSensorShutterMode(self, context, value):
+		val = ctypes.c_int(value)
+		res = LibLoader.lib.FliCblueSfnc_getSensorShutterMode_V2(context, ctypes.byref(val))
+		return res, val.value
 
 	#------------------------------------------------------------
 	LibLoader.lib.FliCblueSfnc_getRegionSelector_V2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]

@@ -95,10 +95,24 @@ class WidgetGallery(QDialog):
         self.roi_label.setBuddy(self.roi_in)
         self.roi_out = QLabel("?")
         self.shutter_in = QComboBox()
-        self.shutter_in.addItems(['Global', 'Rolling'])
+        if DEMO:
+            self.shutter_in.addItems(['Global', 'Rolling'])
+        else:
+            self.shutter_in.addItems(list(self.cam.ShutterMap.keys()))
         self.shutter_label = QLabel("&Shutter Mode:")
         self.shutter_label.setBuddy(self.shutter_in)
         self.shutter_out = QLabel("?")
+        self.shutter = self.shutter_in.currentText()
+
+        self.hdr_in = QComboBox()
+        if DEMO:
+            self.hdr_in.addItems(['On', 'Off'])
+        else:
+            self.shutter_in.addItems(list(self.cam.HdrMap.keys()))
+        self.hdr_label = QLabel("&HDR Mode:")
+        self.hdr_label.setBuddy(self.hdr_in)
+        self.hdr_out = QLabel("?")
+        self.hdr = self.hdr_in.currentText()
 
         self.vmin_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
         self.vmin_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
@@ -149,12 +163,15 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.shutter_label, 5, 0)
         layout.addWidget(self.shutter_in, 5, 1)
         layout.addWidget(self.shutter_out, 5, 2)
-        layout.addWidget(self.vmin_label, 6, 0)
-        layout.addWidget(self.vmin_slider, 6, 1)
-        layout.addWidget(self.vmin_value, 6, 2)
-        layout.addWidget(self.vmax_label, 7, 0)
-        layout.addWidget(self.vmax_slider, 7, 1)
-        layout.addWidget(self.vmax_value, 7, 2)
+        layout.addWidget(self.hdr_label, 6, 0)
+        layout.addWidget(self.hdr_in, 6, 1)
+        layout.addWidget(self.hdr_out, 6, 2)
+        layout.addWidget(self.vmin_label, 7, 0)
+        layout.addWidget(self.vmin_slider, 7, 1)
+        layout.addWidget(self.vmin_value, 7, 2)
+        layout.addWidget(self.vmax_label, 8, 0)
+        layout.addWidget(self.vmax_slider, 8, 1)
+        layout.addWidget(self.vmax_value, 8, 2)
         
         layout.addWidget(self.apply_button, 9, 1)
         layout.addWidget(self.start_button, 9, 0)
@@ -206,11 +223,11 @@ class WidgetGallery(QDialog):
     
     def Stop(self):
         self.running = False
-        self.cam.stop(self.context)
+        self.cam.stop()
     
     def Shutdown(self):
         self.Stop()
-        self.cam.shutdown(self.context)
+        self.cam.shutdown()
         self.close()
     
     def Update(self, interval=0.1): # TODO: update deamon
@@ -224,10 +241,12 @@ class WidgetGallery(QDialog):
 
             # fetch camera metadata
             #self.fps_out.setText(self.shm['fps'].get_data(check=True))
-            self.fps_out.setText(str(self.cam.getFps(self.context)))
-            self.gain_out.setText(str(self.cam.getGain(self.context)))
-            self.temp_out.setText(str(self.cam.getTemp(self.context)))
-            self.roi_out.setText(str(self.cam.getRoi(self.context)))
+            self.fps_out.setText(str(self.cam.getFps()))
+            self.gain_out.setText(str(self.cam.getGain()))
+            self.temp_out.setText(str(self.cam.getTemp()))
+            self.roi_out.setText(str(self.cam.getRoi()))
+            self.shutter_out.setText(str(self.cam.getShutter()))
+            self.hdr_out.setText(str(self.cam.getHdr()))
             sleep(interval)
 
     def Apply(self):
@@ -235,30 +254,36 @@ class WidgetGallery(QDialog):
         if self.fps_in.isModified():
             fps = self.fps_in.text()
             try:
-                self.cam.setFps(self.context,float(fps))#getDouble())
+                self.cam.setFps(float(fps))#getDouble())
             except ValueError:
                 print(f"FPS is not a Float: {fps}")
         
         if self.gain_in.isModified():
             gain = self.gain_in.text()
             try:
-                self.cam.setGain(self.context,float(gain))
+                self.cam.setGain(float(gain))
             except ValueError:
                 print(f"Gain is not a Float: {gain}")
         
         if self.temp_in.isModified():
             temp = self.temp_in.text()
             try:
-                self.cam.setTemp(self.context,float(temp))
+                self.cam.setTemp(float(temp))
             except ValueError:
                 print(f"Temp is not a Float: {temp}")
         
         if self.roi_in.isModified():
             roi = np.fromstring(self.roi_in.text())
             try:
-                self.cam.setRoi(self.context,roi)
+                self.cam.setRoi(roi)
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
+        
+        if self.shutter_in.currentText() != self.shutter:
+            self.cam.setShutter(self.shutter_in.currentText())
+        
+        if self.hdr_in.currentText() != self.hdr:
+            self.cam.setHdr(self.hdr_in.currentText())
         #self.vmin = self.vmin_slider.getValue()
         #self.vmax = self.vmax_slider.getValue()
     
