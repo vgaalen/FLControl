@@ -102,15 +102,17 @@ class WidgetGallery(QDialog):
 
         self.vmin_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
         self.vmin_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
-        self.vmin_slider.setRange(0,94000)
+        self.vmin_slider.setRange(0,2**16)
         self.vmin_slider.setValue(0)
+        self.vmin_slider.valueChanged.connect(self.apply_vmin)
         self.vmin_label = QLabel("&Vmin:")
         self.vmin_label.setBuddy(self.vmin_slider)
         self.vmin_value = QLabel("0")
         self.vmax_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
         self.vmax_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
-        self.vmax_slider.setRange(0,94000)
+        self.vmax_slider.setRange(0,2**16)
         self.vmax_slider.setValue(100)
+        self.vmax_slider.valueChanged.connect(self.apply_vmax)
         self.vmax_label = QLabel("&Vmax:")
         self.vmax_label.setBuddy(self.vmax_slider)
         self.vmax_value = QLabel("100")
@@ -257,8 +259,16 @@ class WidgetGallery(QDialog):
                 self.cam.setRoi(self.context,roi)
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
-        self.vmin = self.vmin_slider.getValue()
-        self.vmax = self.vmax_slider.getValue()
+        #self.vmin = self.vmin_slider.getValue()
+        #self.vmax = self.vmax_slider.getValue()
+    
+    def apply_vmin(self, value):
+        self.vmin = value
+        self.vmin_value.setText(f"{value}")
+    
+    def apply_vmax(self, value):
+        self.vmax = value
+        self.vmax_value.setText(f"{value}")
     
     def Capture(self): 
         self.capture_status.setText("Recording")
