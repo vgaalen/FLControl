@@ -9,44 +9,50 @@ from matplotlib.backends.backend_qtagg import FigureCanvas
 import numpy as np
 import threading
 from time import sleep
+from datetime import datetime
 
-import cblue as cam
-# import cred as cam
-from Capture import capture
-import mappings
+global DEMO
+DEMO = True
+
+if not DEMO:
+    from Capture import capture
+    import mappings
 
 class WidgetGallery(QDialog):
-    def __init__(self, cam, parent=None):
+    def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        self.cam = mappings.Start()
+        if not DEMO:
+            self.cam = mappings.Start()
 
         self.originalPalette = QApplication.palette()
-        self.createLeftGroupBox()
-        self.createRightGroupBox()
+        self.createViewGroupBox()
+        self.createControlGroupBox()
+        self.createCaptureControlGroupBox()
         self.createProgressBar()
 
         mainLayout = QGridLayout()
-        mainLayout.addWidget(self.LeftGroupBox, 1, 0)
-        mainLayout.addWidget(self.RightGroupBox, 1, 1)
+        mainLayout.addWidget(self.ViewGroupBox, 1, 0, 2, 1)
+        mainLayout.addWidget(self.ControlGroupBox, 1, 1)
+        mainLayout.addWidget(self.CaptureGroupBox, 2, 1)
         mainLayout.addWidget(self.progressBar, 3, 0, 1, 2)
         mainLayout.setRowStretch(1, 1)
         mainLayout.setRowStretch(2, 1)
         mainLayout.setColumnStretch(0, 1)
         mainLayout.setColumnStretch(1, 1)
         self.setLayout(mainLayout)
-
         self.setWindowTitle("Styles")
 
-        self.context = self.cam.start()
-        self.Start()
+        if not DEMO:
+            self.context = self.cam.start()
+            self.Start()
 
     def advanceProgressBar(self):
         curVal = self.progressBar.value()
         maxVal = self.progressBar.maximum()
         self.progressBar.setValue(curVal + (maxVal - curVal) // 100)
 
-    def createLeftGroupBox(self):
-        self.LeftGroupBox = QGroupBox("Live Viewer")
+    def createViewGroupBox(self):
+        self.ViewGroupBox = QGroupBox("Live Viewer")
 
         self.figure = Figure(figsize=(5,3))
         self.canvas = FigureCanvas(self.figure)
@@ -64,13 +70,12 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.canvas)
         layout.addWidget(self.auto_scale_button)
         layout.addStretch(1)
-        self.LeftGroupBox.setLayout(layout)
+        self.ViewGroupBox.setLayout(layout)
 
-    def createRightGroupBox(self):
-        self.RightGroupBox = QGroupBox("Control Panel")
+    def createControlGroupBox(self):
+        self.ControlGroupBox = QGroupBox("Control Panel")
 
         # Settings Panel
-        #self.fps_in = QInputDialog(NoButtons=True)#.DoubleInput()
         self.set_point_label = QLabel("Set Point")
         self.cam_status_label = QLabel("Status")
         self.fps_in = QLineEdit("100")
@@ -89,19 +94,20 @@ class WidgetGallery(QDialog):
         self.roi_label = QLabel("&Region of Interest:")
         self.roi_label.setBuddy(self.roi_in)
         self.roi_out = QLabel("?")
-        self.shutter_in = QLineEdit("Global")
+        self.shutter_in = QComboBox()
+        self.shutter_in.addItems(['Global', 'Rolling'])
         self.shutter_label = QLabel("&Shutter Mode:")
         self.shutter_label.setBuddy(self.shutter_in)
         self.shutter_out = QLabel("?")
 
-        self.vmin_slider = QSlider(Qt.Orientation.Horizontal, self.RightGroupBox)
+        self.vmin_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
         self.vmin_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
         self.vmin_slider.setRange(0,94000)
         self.vmin_slider.setValue(0)
         self.vmin_label = QLabel("&Vmin:")
         self.vmin_label.setBuddy(self.vmin_slider)
         self.vmin_value = QLabel("0")
-        self.vmax_slider = QSlider(Qt.Orientation.Horizontal, self.RightGroupBox)
+        self.vmax_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
         self.vmax_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
         self.vmax_slider.setRange(0,94000)
         self.vmax_slider.setValue(100)
@@ -112,14 +118,6 @@ class WidgetGallery(QDialog):
         self.apply_button = QPushButton("Apply")
         self.apply_button.setDefault(True)
         self.apply_button.clicked.connect(self.Apply)
-
-        self.nframes = QLineEdit()
-        self.nframes_label = QLabel("&# of Frames")
-        self.nframes_label.setBuddy(self.nframes)
-        self.capture_button = QPushButton("Capture")
-        self.capture_button.setDefault(True)
-        self.capture_button.clicked.connect(self.Capture)
-        self.capture_status = QLabel(" ")
 
         self.start_button = QPushButton("Start")
         self.start_button.setDefault(True)
@@ -155,26 +153,48 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.vmax_label, 7, 0)
         layout.addWidget(self.vmax_slider, 7, 1)
         layout.addWidget(self.vmax_value, 7, 2)
-        layout.addWidget(self.nframes_label, 8, 0)
-        layout.addWidget(self.nframes, 8, 1)
-        layout.addWidget(self.capture_status, 8, 2)
-        layout.addWidget(self.apply_button, 9, 1)
-        layout.addWidget(self.capture_button, 9, 2)
-
-        layout.addWidget(self.start_button, 11, 0)
-        layout.addWidget(self.stop_button, 11, 1)
-        layout.addWidget(self.shutdown_button, 11, 2)
         
-        self.RightGroupBox.setLayout(layout)
+        layout.addWidget(self.apply_button, 9, 1)
+        layout.addWidget(self.start_button, 9, 0)
+        layout.addWidget(self.stop_button, 9, 2)
+        layout.addWidget(self.shutdown_button, 9, 3)
+        
+        self.ControlGroupBox.setLayout(layout)
+    
+    def createCaptureControlGroupBox(self):
+        self.CaptureGroupBox = QGroupBox("Control Panel")
 
-    def createProgressBar(self):
+        self.nframes = QLineEdit()
+        self.nframes_label = QLabel("&# of Frames")
+        self.nframes_label.setBuddy(self.nframes)
+        self.filename = QLineEdit(f"{datetime.now():%Y%m%d-%H%M%S}.fits")
+        self.filename_label = QLabel("&Write to File")
+        self.filename_label.setBuddy(self.filename)
+
+        self.capture_button = QPushButton("Capture")
+        self.capture_button.setDefault(True)
+        self.capture_button.clicked.connect(self.Capture)
+        self.capture_status = QLabel(" ")
+
+        layout = QGridLayout()
+        layout.addWidget(self.nframes_label, 1, 0)
+        layout.addWidget(self.nframes, 1, 1)
+        layout.addWidget(self.filename_label, 2, 0)
+        layout.addWidget(self.filename, 2, 1)
+        layout.addWidget(self.capture_status, 3, 1)
+        layout.addWidget(self.capture_button, 3, 0)
+        self.CaptureGroupBox.setLayout(layout)
+
+    def createProgressBar(self): # TODO attach to capture progress
         self.progressBar = QProgressBar()
         self.progressBar.setRange(0, 10000)
         self.progressBar.setValue(0)
-
-        timer = QTimer(self)
-        timer.timeout.connect(self.advanceProgressBar)
-        timer.start(1000)
+    
+    def updateProgressBar(self, itt=None, range=None):
+        if range is not None:
+            self.progressBar.setRange(0,range)
+        if itt is not None:
+            self.progressBar.setValue(itt)
     
     def Start(self, interval=1):
         self.running = True
@@ -243,8 +263,9 @@ class WidgetGallery(QDialog):
     def Capture(self): 
         self.capture_status.setText("Recording")
         nframes = self.nframes.text()
+        self.updateProgressBar(itt=0, range=nframes)
         try:
-            res = capture(self.context,int(nframes))
+            res = capture(self.cam,int(nframes),self.updateProgressBar)
             if res==1:
                 self.capture_status.setText("Complete")
             else:
@@ -260,11 +281,8 @@ class WidgetGallery(QDialog):
         self.vmin = np.mean(img)-3*np.std(img)
         self.vmax = np.mean(img)+3*np.std(img)
 
-
 if __name__ == '__main__':
-
     import sys
-
     app = QApplication(sys.argv)
     gallery = WidgetGallery()
     gallery.show()

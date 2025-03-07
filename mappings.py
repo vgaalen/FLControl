@@ -1,4 +1,4 @@
-import FliSdk_V2 as FliSdk
+import sdk.FliSdk_V2 as FliSdk
 import numpy as np
 from time import sleep
 
@@ -102,6 +102,44 @@ class CRED(FLI_CAMERA):
 #         interface = FliSdk.FliCredTwo
 #         super().__init__(context, interface)
 
+class DAO_CAM:
+    def __init__(self, name="dao"):
+        import dao
+        
+        self.shm = {
+            #'img': dao.shm(f"/tmp/{name}.im.shm",buffer) # TODO: how to determine height, width here?
+            'fps': dao.shm(f"/tmp/{name}Fps.im.shm", np.zeros((1,1)).astype(np.float32)),
+            'exptime': dao.shm(f"/tmp/{name}Dit.im.shm", np.zeros((1,1)).astype(np.float32)),
+            'gain': dao.shm(f"/tmp/{name}Gain.im.shm", np.zeros((1,1)).astype(np.float32)),
+            'mode': dao.shm(f"/tmp/{name}Mode.im.shm", np.zeros((1,1)).astype(np.str_)),
+            'shutter': dao.shm(f"/tmp/{name}Shutter.im.shm", np.zeros((1,1)).astype(np.str_)),
+            'roi': dao.shm(f"/tmp/{name}Roi.im.shm", np.zeros((1,5)).astype(np.int16))
+        }
+
+        self.setFps = dao_func(self.shm['fps']).set
+        self.getFps = dao_func(self.shm['fps']).get
+        self.setTint = dao_func(self.shm['exptime']).set
+        self.getTint = dao_func(self.shm['exptime']).get
+        self.setGain = dao_func(self.shm['gain']).set
+        self.getGain = dao_func(self.shm['gain']).get
+        self.setMode = dao_func(self.shm['mode']).set
+        self.getMode = dao_func(self.shm['mode']).get
+        self.setShutter = dao_func(self.shm['shutter']).set
+        self.getShutter = dao_func(self.shm['shutter']).get
+        self.setRoi = dao_func(self.shm['roi']).set
+        self.getRoi = dao_func(self.shm['roi']).get
+        # TODO: HDR?, Binning, reboot
+    
+    def start(self):
+        raise NotImplementedError
+        # shm['running']=True
+    def stop(self):
+        raise NotImplementedError
+        # shm['running']=False
+    def shutdown(self):
+        raise NotImplementedError
+
+
 class cam_func:
     def __init__(self, cam, func):
         self.func = func
@@ -112,6 +150,16 @@ class cam_func:
         while not res[0]:
             res = [self.func(self.cam.context, *args, **kwargs)]
         return res[1:].unpack()
+
+class dao_func:
+    def __init__(self, shm):
+        self.shm
+    
+    def get(self):
+        return self.shm.get_data(check=True)
+
+    def set(self, data):
+        return self.shm.set_data(data)
 
 
 def Start():

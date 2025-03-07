@@ -4,19 +4,20 @@ from datetime import datetime
 import numpy as np
 
 #import dao
-from cblue import *
+#from cblue import *
 
-def capture(context, nframes):
-    height, width = getImage(context).shape
+def capture(cam, nframes, progress_func):
+    height, width = cam.getImage().shape
     temps = []
     buffer = np.zeros((nframes, height, width), dtype=np.uint16)
     timeStart = datetime.now()
     for i in range(nframes):
         # On CBlue no trigger is available, so we use timing
         sleep(exptime)
+        progress_func(itt=i)
 
-        buffer[i] = shm.get_data()
-        temps.append(shm['temp'].get_data())
+        buffer[i] = cam.getImage()
+        temps.append(cam.getTemp())
     
     timeStop = datetime.now()
     # Write to fits
@@ -26,10 +27,10 @@ def capture(context, nframes):
     hdr['TEMP-DET']= (f"{np.mean(temps)+274.15}", "Detector Temperature in Kelvin") # Convert temperature to Kelvin
     hdr['TEMP-MIN']= (f"{np.min(temps)+274.15}", "Minimum Temperature Reached in Kelvin")
     hdr['TEMP-MAX']= (f"{np.max(temps)+274.15}", "Maximum Temperature Reached in Kelvin")
-    hdr['FPS']= (f"{getFps}", "Framerate in Hz")
-    hdr['EXPTIME']= (f"{getTint}", "Exposure Time in Seconds")
-    hdr['GAIN']= (f"{getGain}", "Camera Gain Setting")
-    hdr['ROI']= (f"{getRoi}", "Region of Interest Setting [status, x-anchor, y-anchor, width, height]")
+    hdr['FPS']= (f"{cam.getFps()}", "Framerate in Hz")
+    hdr['EXPTIME']= (f"{cam.getTint()}", "Exposure Time in Seconds")
+    hdr['GAIN']= (f"{cam.getGain()}", "Camera Gain Setting")
+    hdr['ROI']= (f"{cam.getRoi()}", "Region of Interest Setting [status, x-anchor, y-anchor, width, height]")
     #hdr['HDR']=f"{HDR}"
     #hdr['COMMENT']=Note
     hdu = fits.PrimaryHDU(data=buffer,header=hdr)
@@ -37,6 +38,8 @@ def capture(context, nframes):
     return 1
 
 if __name__=="__main__":
+    import mappings
+
     shm = loadShm()
     if np.sum(shm['img'].get_data(check=True))==0.:
         print("CBlue Deamon is not running")
@@ -64,7 +67,7 @@ if __name__=="__main__":
 
     temp = None
     while type(temp) not in [int, float]:
-        temp = input("Temperature Setpoin in degrees Celcius : ")
+        temp = input("Temperature Setpoint in degrees Celcius : ")
         try:
             temp = float(temp)
         except:
