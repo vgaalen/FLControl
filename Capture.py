@@ -6,7 +6,7 @@ import numpy as np
 #import dao
 #from cblue import *
 
-def capture(cam, nframes, progress_func):
+def capture(cam, nframes, progress_func=None, file=f"{datetime.now:%Y%m%d-%H%M%S}.fits"):
     height, width = cam.getImage().shape
     temps = []
     buffer = np.zeros((nframes, height, width), dtype=np.uint16)
@@ -14,7 +14,8 @@ def capture(cam, nframes, progress_func):
     for i in range(nframes):
         # On CBlue no trigger is available, so we use timing
         sleep(exptime)
-        progress_func(itt=i)
+        if progress_func is not None:
+            progress_func(itt=i)
 
         buffer[i] = cam.getImage()
         temps.append(cam.getTemp())

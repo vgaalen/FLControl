@@ -48,8 +48,7 @@ class CBLUE(FLI_CAMERA):
         self.ShutterMap = {'Global': 0, 'Rolling': 1, 'GlobalReset': 2}
         self.HdrMap = {'Mono8': 0, 'Mono10': 1, 'Mono12': 2}
 
-        input()
-        # TODO: HDR?, Binning, reboot
+        # TODO: Binning, reboot
 
     def start(self):
         FliSdk.FliCblueOne.SetDeviceCoolingEnable(self.context, True)
@@ -63,8 +62,12 @@ class CBLUE(FLI_CAMERA):
         while self.getTemp()<15:
             sleep(1)
         FliSdk.FliCblueSfnc.ExecuteDeviceShutdown(self.context)
+    
+    def bias(self):
+        res, min_exptime = FliSdk.FliCblueOne.GetExposureTimeMinReg(self.context)
+        self.setTint(min_exptime)
  
-    def setRoi(self, status, x0, y0, w, h): #TODO: set region of interest
+    def setRoi(self, status, x0, y0, w, h):
         status = [False]
         while np.sum(status) < len(status):
             status = []
@@ -132,6 +135,10 @@ class CRED(FLI_CAMERA):
         self.setTemp(20)
         while self.getTemp()<15:
             sleep(1)
+    
+    def bias(self):
+        res, min, max = self.interface.GetTintRange(self.context)
+        self.setTint(min)
     
     def setRoi(self, status, x0, y0, w, h): #TODO: set region of interest
         raise NotImplementedError("This function is not available on CRED")

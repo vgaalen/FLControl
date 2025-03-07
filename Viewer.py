@@ -16,6 +16,7 @@ DEMO = True
 
 if not DEMO:
     from Capture import capture
+    from Execute import execute
     import mappings
 
 class WidgetGallery(QDialog):
@@ -40,7 +41,10 @@ class WidgetGallery(QDialog):
         mainLayout.setColumnStretch(0, 1)
         mainLayout.setColumnStretch(1, 1)
         self.setLayout(mainLayout)
-        self.setWindowTitle("Styles")
+        if DEMO:
+            self.setWindowTitle("DEMO MODE: NOT CONNECTING TO CAMERA")
+        else:
+            self.setWindowTitle("FLControl - Live Viewer")
 
         if not DEMO:
             self.context = self.cam.start()
@@ -195,16 +199,22 @@ class WidgetGallery(QDialog):
         self.capture_button.clicked.connect(self.Capture)
         self.capture_status = QLabel(" ")
 
+        self.execute_button = QPushButton("Execute Runplan")
+        self.execute_button.setDefault(True)
+        self.execute_button.clicked.connect(self.Execute)
+        self.execute_status = QLabel(" ")
+
         layout = QGridLayout()
         layout.addWidget(self.nframes_label, 1, 0)
         layout.addWidget(self.nframes, 1, 1)
         layout.addWidget(self.filename_label, 2, 0)
         layout.addWidget(self.filename, 2, 1)
-        layout.addWidget(self.capture_status, 3, 1)
-        layout.addWidget(self.capture_button, 3, 0)
+        layout.addWidget(self.capture_status, 3, 2)
+        layout.addWidget(self.capture_button, 3, 1)
+        layout.addWidget(self.execute_button, 3, 0)
         self.CaptureGroupBox.setLayout(layout)
 
-    def createProgressBar(self): # TODO attach to capture progress
+    def createProgressBar(self): 
         self.progressBar = QProgressBar()
         self.progressBar.setRange(0, 10000)
         self.progressBar.setValue(0)
@@ -230,7 +240,7 @@ class WidgetGallery(QDialog):
         self.cam.shutdown()
         self.close()
     
-    def Update(self, interval=0.1): # TODO: update deamon
+    def Update(self, interval=0.1): 
         while self.running:
             #print('a')
             # update image
@@ -298,9 +308,10 @@ class WidgetGallery(QDialog):
     def Capture(self): 
         self.capture_status.setText("Recording")
         nframes = self.nframes.text()
+        file = self.filename.text()
         self.updateProgressBar(itt=0, range=nframes)
         try:
-            res = capture(self.cam,int(nframes),self.updateProgressBar)
+            res = capture(self.cam,int(nframes),self.updateProgressBar,file=file)
             if res==1:
                 self.capture_status.setText("Complete")
             else:
@@ -308,6 +319,18 @@ class WidgetGallery(QDialog):
         except ValueError:
             self.capture_status.setText("Failed")
             print(f"Nframes has to be an integer: {nframes}")
+    
+    def Execute(self):
+        self.capture_status.setText("Recording")
+        self.updateProgressBar(itt=0)
+        try:
+            res = execute(self.cam)
+            if res==1:
+                self.capture_status.setText("Complete")
+            else:
+                self.capture_status.setText("Failed")
+        except ValueError:
+            self.capture_status.setText("Failed")
     
     def auto_scale(self):
         print("set scale")
