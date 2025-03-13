@@ -66,14 +66,19 @@ class WidgetGallery(QDialog):
         cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
         self.cbar = self.figure.colorbar(cmap, ax=self.ax)
 
+        self.mean_label = QLabel("Mean Pixel Value")
+        self.mean_value = QLabel("?")
+
         self.auto_scale_button = QPushButton("Auto Scale")
         self.auto_scale_button.setDefault(True)
         self.auto_scale_button.clicked.connect(self.auto_scale)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.canvas)
-        layout.addWidget(self.auto_scale_button)
-        layout.addStretch(1)
+        layout = QGridLayout()
+        layout.addWidget(self.canvas, 0, 0, 1, 3)
+        layout.addWidget(self.mean_label, 1, 0)
+        layout.addWidget(self.mean_value, 1, 1)
+        layout.addWidget(self.auto_scale_button, 1, 2)
+        #layout.addStretch(1)
         self.ViewGroupBox.setLayout(layout)
 
     def createControlGroupBox(self):
@@ -244,10 +249,12 @@ class WidgetGallery(QDialog):
         while self.running:
             #print('a')
             # update image
-            cmap = self.ax.imshow(self.cam.getImage, vmin=self.vmin, vmax=self.vmax)
+            img = self.cam.getImage
+            cmap = self.ax.imshow(img, vmin=self.vmin, vmax=self.vmax)
             #cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
             self.cbar.remove()
             self.cbar = self.figure.colorbar(cmap, ax=self.ax)
+            self.mean_value.setText(np.mean(img))
 
             # fetch camera metadata
             #self.fps_out.setText(self.shm['fps'].get_data(check=True))
