@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 
 #from Capture import Initialize, get_bias, get_dark
 from Capture import capture
@@ -32,6 +33,11 @@ def execute(cam, runfile="runplan.txt"):
                 cam.setTemp(el.temp)
                 cam.setGain(el.gain)
                 cam.bias()
+                if np.abs(cam.getTemp - el.temp) > 0.1:
+                    while np.abs(cam.getTemp - el.temp) > 0.1:
+                        sleep(1)
+                    sleep(5*60) # Sleep for an additional 5min to let the chip get into an equilibrium
+                                
                 capture(cam, el.num_frames, file=folder+'/'+el.name+'.fits')
             elif el.type == "dark":
                 if status!="covered":
@@ -40,6 +46,11 @@ def execute(cam, runfile="runplan.txt"):
                 cam.setTemp(el.temp)
                 cam.setGain(el.gain)
                 cam.setTint(el.exptime)
+                if np.abs(cam.getTemp - el.temp) > 0.1:
+                    while np.abs(cam.getTemp - el.temp) > 0.1:
+                        sleep(1)
+                    sleep(5*60) # Sleep for an additional 5min to let the chip get into an equilibrium
+
                 capture(cam, el.num_frames, file=folder+'/'+el.name+'.fits')
             elif el.type == "flat":
                 if status!=el.level:
@@ -48,6 +59,11 @@ def execute(cam, runfile="runplan.txt"):
                 cam.setTemp(el.temp)
                 cam.setGain(el.gain)
                 cam.setTint(el.exptime)
+                if np.abs(cam.getTemp - el.temp) > 0.1:
+                    while np.abs(cam.getTemp - el.temp) > 0.1:
+                        sleep(1)
+                    sleep(5*60) # Sleep for an additional 5min to let the chip get into an equilibrium
+                
                 capture(cam, el.num_frames, file=folder+'/'+el.name+'.fits')
             else:
                 raise NotImplementedError("")
