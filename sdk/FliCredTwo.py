@@ -20,6 +20,45 @@ class FliCredTwo:
 		return res, mb.value, fe.value, pw.value, sensor.value, peltier.value, heatsink.value
 
 	#------------------------------------------------------------
+	LibLoader.lib.FliCredTwo_getAllTemp_V2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
+	LibLoader.lib.FliCredTwo_getAllTemp_V2.restype = ctypes.c_bool
+	def GetSensorTemp(self, context):
+		mb = ctypes.c_double(0)
+		fe = ctypes.c_double(0)
+		pw = ctypes.c_double(0)
+		sensor = ctypes.c_double(0)
+		peltier = ctypes.c_double(0)
+		heatsink = ctypes.c_double(0)
+		res = LibLoader.lib.FliCredTwo_getAllTemp_V2(context, ctypes.byref(mb), ctypes.byref(fe), ctypes.byref(pw), ctypes.byref(sensor), ctypes.byref(peltier), ctypes.byref(heatsink))
+		return res, sensor.value
+
+	# #------------------------------------------------------------
+	# LibLoader.lib.FliCredTwo_setCroppingColumns.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+	# LibLoader.lib.FliCredTwo_setCroppingColumns.restype = ctypes.c_bool
+	# def SetRoiColumns(self, context, status, x0, y0, width, height):
+	# 	res = LibLoader.lib.FliCredTwo_setCroppingColumns(context, x0, x0+width)
+	# 	return res
+
+	# #------------------------------------------------------------
+	# LibLoader.lib.FliCredTwo_setCropping_V2.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+	# LibLoader.lib.FliCredTwo_setCropping_V2.restype = ctypes.c_bool
+	# def SetRoi(self, context, status, x0, y0, width, height):
+	# 	res = LibLoader.lib.FliCredTwo_setCropping(context, status, x0, x0+width, y0, y0+height)
+	# 	return res
+	
+	# #------------------------------------------------------------
+	# LibLoader.lib.FliCredTwo_getCropping_V2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
+	# LibLoader.lib.FliCredTwo_getCropping_V2.restype = ctypes.c_bool
+	# def GetRoi(self, context):
+	# 	status = ctypes.c_bool(0)
+	# 	x0 = ctypes.c_int(0)
+	# 	x1 = ctypes.c_int(0)
+	# 	y0 = ctypes.c_int(0)
+	# 	y1 = ctypes.c_int(0)
+	# 	res = LibLoader.lib.FliCredTwo_getCropping_V2(context, ctypes.byref(status), ctypes.byref(x0), ctypes.byref(x1), ctypes.byref(y0), ctypes.byref(y1))
+	# 	return res, [status, x0, (x1-x0), y0, (y1-y0)]
+
+	#------------------------------------------------------------
 	LibLoader.lib.FliCredTwo_getTint_V2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
 	LibLoader.lib.FliCredTwo_getTint_V2.restype = ctypes.c_bool
 	def GetTint(self, context):

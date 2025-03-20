@@ -1,0 +1,9 @@
+name,type,temp,gain,exptime,fps,num_frames
+'bias_-15',bias,-15,'high',,,500
+'dark_-15_10',dark,-15,'high',10,0.1,10
+'dark_-15_5',dark,-15,'high',5,0.2,10
+'dark_-15_15',dark,-15,'high',15,0.06,10
+'bias_-10',bias,-10,'high',,,500
+'dark_-10_10',dark,-10,'high',10,0.1,10
+'dark_-10_5',dark,-10,'high',5,0.2,10
+'dark_-10_15',dark,-10,'high',15,0.06,10

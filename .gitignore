@@ -3,10 +3,11 @@ pyvenv
 
 results/
 data/
-runplan.txt
 config
 
 desktop.ini
 
 *.pkl
 *.csv
+*.fits
+*.txt
