@@ -6,13 +6,18 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QVBoxLayout, QWidget, QInputDialog, QPlainTextEdit)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
+import matplotlib.pyplot as plt
 import numpy as np
 import threading
 from time import sleep
 from datetime import datetime
 
+plt.ion()
+
+# TODO: Put parameter setpoints in fill-in sections
+
 global DEMO
-DEMO = True
+DEMO = False#True
 
 if not DEMO:
     from Capture import capture
@@ -47,7 +52,8 @@ class WidgetGallery(QDialog):
             self.setWindowTitle("FLControl - Live Viewer")
 
         if not DEMO:
-            self.context = self.cam.start()
+            print('a')
+            self.context = self.cam.Start()
             self.Start()
 
     def advanceProgressBar(self):
@@ -65,6 +71,7 @@ class WidgetGallery(QDialog):
         self.vmax = 100
         cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
         self.cbar = self.figure.colorbar(cmap, ax=self.ax)
+        #self.figure.show(block=False)
 
         self.mean_label = QLabel("Mean Pixel Value")
         self.mean_value = QLabel("?")
@@ -99,7 +106,7 @@ class WidgetGallery(QDialog):
         self.temp_label = QLabel("&Temperature")
         self.temp_label.setBuddy(self.temp_in)
         self.temp_out = QLabel("?")
-        self.roi_in = QLineEdit("[0,0,0,0,0]")
+        self.roi_in = QLineEdit("0,0,0,0,0")
         self.roi_label = QLabel("&Region of Interest:")
         self.roi_label.setBuddy(self.roi_in)
         self.roi_out = QLabel("?")
@@ -235,10 +242,11 @@ class WidgetGallery(QDialog):
         self.context = self.cam.Start()
         loop = threading.Thread(target = self.Update)#, args = (interval))
         loop.start()
+        #self.Update()
     
     def Stop(self):
         self.running = False
-        self.cam.stop()
+        self.cam.Stop()
     
     def Shutdown(self):
         self.Stop()
@@ -247,14 +255,16 @@ class WidgetGallery(QDialog):
     
     def Update(self, interval=0.1): 
         while self.running:
-            #print('a')
             # update image
-            img = self.cam.getImage
+            img = self.cam.getImage()
             cmap = self.ax.imshow(img, vmin=self.vmin, vmax=self.vmax)
             #cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
             self.cbar.remove()
             self.cbar = self.figure.colorbar(cmap, ax=self.ax)
-            self.mean_value.setText(np.mean(img))
+            self.mean_value.setText(str(np.mean(img)))
+
+            self.canvas.draw()
+            #plt.pause(0.1)
 
             # fetch camera metadata
             #self.fps_out.setText(self.shm['fps'].get_data(check=True))
@@ -264,7 +274,7 @@ class WidgetGallery(QDialog):
             self.roi_out.setText(str(self.cam.getRoi()))
             self.shutter_out.setText(str(self.cam.getShutter()))
             self.hdr_out.setText(str(self.cam.getHdr()))
-            sleep(interval)
+            #sleep(interval)
 
     def Apply(self):
         # change camera settings
@@ -278,7 +288,7 @@ class WidgetGallery(QDialog):
         if self.gain_in.isModified():
             gain = self.gain_in.text()
             try:
-                self.cam.setGain(float(gain))
+                self.cam.setGain(gain)
             except ValueError:
                 print(f"Gain is not a Float: {gain}")
         
@@ -290,9 +300,9 @@ class WidgetGallery(QDialog):
                 print(f"Temp is not a Float: {temp}")
         
         if self.roi_in.isModified():
-            roi = np.fromstring(self.roi_in.text())
+            roi = np.fromstring(self.roi_in.text(),sep=',')
             try:
-                self.cam.setRoi(roi)
+                self.cam.setRoi(*roi)
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
         
@@ -301,8 +311,6 @@ class WidgetGallery(QDialog):
         
         if self.hdr_in.currentText() != self.hdr:
             self.cam.setHdr(self.hdr_in.currentText())
-        #self.vmin = self.vmin_slider.getValue()
-        #self.vmax = self.vmax_slider.getValue()
     
     def apply_vmin(self, value):
         self.vmin = value
@@ -314,11 +322,11 @@ class WidgetGallery(QDialog):
     
     def Capture(self): 
         self.capture_status.setText("Recording")
-        nframes = self.nframes.text()
+        nframes = int(self.nframes.text())
         file = self.filename.text()
         self.updateProgressBar(itt=0, range=nframes)
         try:
-            res = capture(self.cam,int(nframes),self.updateProgressBar,file=file)
+            res = capture(self.cam,nframes,self.updateProgressBar,file=file)
             if res==1:
                 self.capture_status.setText("Complete")
             else:

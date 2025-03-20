@@ -1,18 +1,27 @@
 import sdk.FliSdk_V2 as FliSdk
 import numpy as np
 from time import sleep
+import ctypes
 
 class FLI_CAMERA:
-    def __init__(self, context):
+    def __init__(self, context, name="UNKNOWN"):
+        self.name = name
+        self._update_dims()
+
         self.context = context
         self.getFps = cam_func(self, FliSdk.FliSerialCamera.GetFps)
         self.setFps = cam_func(self, FliSdk.FliSerialCamera.SetFps)
-
-    def start(self):
-        FliSdk.Start()
     
-    def stop(self):
-        FliSdk.Stop()
+    def _update_dims(self):
+        self.width, self.height = FliSdk.GetCurrentImageDimension(self.context)
+
+    def Start(self):
+        self.start()
+        FliSdk.Start(self.context)
+    
+    def Stop(self):
+        #self.stop()
+        FliSdk.Stop(self.context)
     
     def getRoi(self) -> tuple[int, int, int, int]:
         res, isenabled, roi = FliSdk.GetCroppingState(self.context)
@@ -22,18 +31,42 @@ class FLI_CAMERA:
         else:
             return  [0,0,0,w,h]
     
-    def getImage(self) -> np.ndarray:
+    def setRoi(self, status, x0, y0, width, height) -> tuple[int, int, int, int]:
+        state = FliSdk.CroppingData()
+        state['col1'] = x0
+        state['col2'] = x0 + width
+        state['row1'] = y0
+        state['row2'] = y0 + height
+        res = FliSdk.SetCroppingState(self.context, status, state)
+        self._update_dims()
+        return res
+    
+    def getImages(self, n) -> np.ndarray:
+        ArrayType = ctypes.c_uint16 * self.width * self.height
         currentfilling = FliSdk.GetBufferFilling(self.context)
-        n=0
-        while n<1:
-            if FliSdk.GetBufferFilling(self.context) != currentfilling:
-                buffer=FliSdk.GetRawImageAsNumpyArray(self.context, -1)
-                n=n+1
+        buffer = np.zeros((self.height, self.width))
+        i = 0
+        while i<n:
+            if FliSdk.GetBufferFilling(self.context) > currentfilling:
+                #buffer[i]=FliSdk.GetRawImageAsNumpyArray(self.context, -1)
+                pointer = FliSdk.GetRawImage(self.context, currentfilling)
+                pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+                buffer[i] = np.frombuffer(pa.contents, dtype=np.uint16).reshape((self.height,self.width))
+                i = i+1
+                currentfilling += 1
         return buffer
+    
+    def getImage(self):
+        ArrayType = ctypes.c_uint16 * self.width * self.height
+        pointer = FliSdk.GetRawImage(self.context, -1)
+        pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
+        img = np.frombuffer(pa.contents, dtype=np.uint16).reshape((self.height,self.width))
+        return img
+    
 
 class CBLUE(FLI_CAMERA):
-    def __init__(self, context):
-        super().__init__(context)
+    def __init__(self, context, name):
+        super().__init__(context, name=name)
         self.getTint = cam_func(self, FliSdk.FliCblueSfnc.GetExposureTime)
         self.setTint = cam_func(self, FliSdk.FliCblueSfnc.SetExposureTime)
         self.getTemp = cam_func(self, FliSdk.FliCblueOne.GetDeviceCoolingSetpoint)
@@ -59,7 +92,7 @@ class CBLUE(FLI_CAMERA):
     def shutdown(self):
         FliSdk.FliCblueSfnc.ExecuteAcquisitionStop(self.context)
         self.setTemp(20)
-        while self.getTemp()<15:
+        while self.getTemp()[-1]<15:
             sleep(1)
         FliSdk.FliCblueSfnc.ExecuteDeviceShutdown(self.context)
     
@@ -108,8 +141,8 @@ class CBLUE(FLI_CAMERA):
 
 
 class CRED(FLI_CAMERA):
-    def __init__(self, context, interface):
-        super().__init__(context)
+    def __init__(self, context, interface, name):
+        super().__init__(context, name=name)
         self.interface = interface
         self.getTint = cam_func(self, self.interface.GetTint)
         self.setTint = cam_func(self, self.interface.SetTint)
@@ -131,22 +164,29 @@ class CRED(FLI_CAMERA):
         self.interface.EnableRawImages(self.context, True)
     
     def shutdown(self):
-        self.stop()
+        self.Stop()
         self.setTemp(20)
         while self.getTemp()<15:
+            print(self.getTemp())
             sleep(1)
     
     def bias(self):
+        res, max = self.interface.GetMaxFpsUsb(self.context)
+        self.setFps(max)
         res, min, max = self.interface.GetTintRange(self.context)
         self.setTint(min)
+        
     
     def setRoi(self, status, x0, y0, w, h): #TODO: set region of interest
-        raise NotImplementedError("This function is not available on CRED")
-    def getRoi():
-        raise NotImplementedError("")
-    def getShutter():
-        raise NotImplementedError("")
-    def setShutter():
+        return 0
+        #self.interface.SetRoi(self.context, status, x0, y0, w, h)
+    def getRoi(self):
+        return 0
+        #self.interface.GetRoi(self.context)
+    def getShutter(self):
+        return 0
+        #raise NotImplementedError("")
+    def setShutter(self):
         raise NotImplementedError("")
 
 # Seems like the is no reason to separate out Cred, CredOne, CredTwo, CredThree
@@ -200,13 +240,21 @@ class cam_func:
         self.convert = convert
     
     def __call__(self, *args, **kwargs):
-        res = [False]
-        while not res[0]:
+        state = False
+        while not state:
             if self.convert is not False:
-                res = [self.func(self.cam.context, *[self.convert(x) for x in args], **kwargs)]
+                res = self.func(self.cam.context, *[self.convert(x) for x in args], **kwargs)
             else:
-                res = [self.func(self.cam.context, *args, **kwargs)]
-        return res[1:].unpack()
+                res = self.func(self.cam.context, *args, **kwargs)
+            if type(res) == list or type(res) == tuple:
+                state = res[0]
+            else:
+                state = res
+        
+        if type(res) == list or type(res) == tuple:
+            return res[-1]
+        else:
+            return res
 
 class dao_func:
     def __init__(self, shm):
@@ -241,14 +289,13 @@ def Start():
     else:
         raise ConnectionError("No camera found...")
     
-    if FliSdk.IsClueOne(context):
+    if FliSdk.IsCblueOne(context):
         return CBLUE(context)
-    elif FliSdk.IsCred(context):
-        return CRED(context, FliSdk.FliCred)
     elif FliSdk.IsCredOne(context):
         return CRED(context, FliSdk.FliCredOne)
     elif FliSdk.IsCredTwo(context):
         return CRED(context, FliSdk.FliCredTwo)
     elif FliSdk.IsCredThree(context):
         return CRED(context, FliSdk.FliCredThree)
-
+    elif FliSdk.IsCred(context):
+        return CRED(context, FliSdk.FliCred)
