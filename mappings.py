@@ -88,6 +88,7 @@ class CBLUE(FLI_CAMERA):
         FliSdk.FliCblueOne.SetDeviceFanMode(self.context, True)
         FliSdk.FliCblueOne.SetGlowReduction(self.context, False)
         FliSdk.FliCblueOne.SetConversionEfficiency(self.context, 1)
+        FliSdk.FliCblueSfnc.SetDeviceIndicatorMode(self.context, 0)
     
     def shutdown(self):
         FliSdk.FliCblueSfnc.ExecuteAcquisitionStop(self.context)
@@ -160,8 +161,10 @@ class CRED(FLI_CAMERA):
         self.ShutterMap = {'Not Supported': 0}
     
     def start(self):
-        #FliSdk.FliCred.EnableLed(self.context, False)
         self.interface.EnableRawImages(self.context, True)
+        self.interface.EnableBadPixel(self.context, False)
+        FliSdk.FliCred.EnableLed(self.context, False)
+
     
     def shutdown(self):
         self.Stop()
