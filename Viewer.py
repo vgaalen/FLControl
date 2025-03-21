@@ -240,17 +240,18 @@ class WidgetGallery(QDialog):
     def Start(self, interval=1):
         self.running = True
         self.context = self.cam.Start()
-        loop = threading.Thread(target = self.Update)#, args = (interval))
-        loop.start()
+        self.loop = threading.Thread(target = self.Update)#, args = (interval))
+        self.loop.start()
         #self.Update()
     
     def Stop(self):
-        self.running = False
         self.cam.Stop()
     
     def Shutdown(self):
         self.Stop()
         self.cam.shutdown()
+        self.running = False
+        self.loop.join(timeout=60)
         self.close()
     
     def Update(self, interval=0.1): 
@@ -339,11 +340,13 @@ class WidgetGallery(QDialog):
         self.capture_status.setText("Recording")
         self.updateProgressBar(itt=0)
         try:
-            res = execute(self.cam)
-            if res==1:
-                self.capture_status.setText("Complete")
-            else:
-                self.capture_status.setText("Failed")
+            #res = execute(self.cam)
+            self.ExecThread = threading.Thread(target = self.Update, kwargs = {'progress_func': self.updateProgressBar, 'exit_status_func': self.capture_status.setText})
+            self.ExecThread.start()
+            #if res==1:
+            #    self.capture_status.setText("Complete")
+            #else:
+            #    self.capture_status.setText("Failed")
         except ValueError:
             self.capture_status.setText("Failed")
     

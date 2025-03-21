@@ -13,7 +13,7 @@ from time import sleep
 #from Capture import Initialize, get_bias, get_dark
 from Capture import capture
 
-def execute(cam, runfile="G:\\Mijn Drive\\Cblue\\runplan.csv"):
+def execute(cam, runfile="G:\\Mijn Drive\\Cblue\\runplan.csv", progress_func=None, exit_status_func=None):
     folder = f"data/{datetime.now():%Y%m%d}"
     Path(folder).mkdir(parents=True, exist_ok=True)
     print(folder)
@@ -23,9 +23,11 @@ def execute(cam, runfile="G:\\Mijn Drive\\Cblue\\runplan.csv"):
     #    print('a')
     plan = pd.read_csv(runfile)
     print(plan)
+    n = len(plan)
 
     status = None
     for i,el in enumerate(plan.itertuples()):#rows(named=True)):
+        progress_func(itt=i, range=n)
         if el.status:
             continue
         else:
@@ -86,4 +88,5 @@ def execute(cam, runfile="G:\\Mijn Drive\\Cblue\\runplan.csv"):
             plan.loc[i, 'status'] = True
             plan.to_csv(runfile)
             print(el)
+    exit_status_func("Complete")
     return 1
