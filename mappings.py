@@ -155,6 +155,8 @@ class CRED(FLI_CAMERA):
         #self.setShutter = cam_func(self, FliSdk.FliCblueSfnc.SetSensorShutterMode)
         self.setHdr = cam_func(self, self.interface.EnableHdr, convert=bool)
         self.getHdr = cam_func(self, self.interface.GetHdrState)
+        self.setBadpx = cam_func(self, self.interface.EnableBadPixel)
+        self.getBadpx = cam_func(self, self.interface.GetBadPixelState)
         # TODO: Binning, reboot
 
         self.HdrMap = {'True': 1, 'False': 0}

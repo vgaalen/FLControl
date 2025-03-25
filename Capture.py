@@ -11,6 +11,7 @@ from os.path import isfile
 def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     height, width = cam.getImage().shape
     temps = []
+    cam.setBadpx(False)
     #buffer = np.zeros((nframes, height, width), dtype=np.uint16)
     timeStart = datetime.now()
     exptime = cam.getTint()
@@ -39,6 +40,7 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     hdr['GAIN']= (f"{cam.getGain()}", "Camera Gain Setting")
     hdr['ROI']= (f"{cam.getRoi()}", "Region of Interest Setting [status, x0, y0, width, height]")
     hdr['CAM_NAME']= (f"{cam.name}", "Camera Name")
+    hdr['BADPX_CORR']= (f"{cam.getBadpx()}", "State of Bad Pixel Correction")
     #hdr['HDR']=f"{HDR}"
     #hdr['COMMENT']=Note
     hdu = fits.PrimaryHDU(data=buffer,header=hdr)
