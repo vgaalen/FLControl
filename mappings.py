@@ -6,9 +6,9 @@ import ctypes
 class FLI_CAMERA:
     def __init__(self, context, name="UNKNOWN"):
         self.name = name
+        self.context = context
         self._update_dims()
 
-        self.context = context
         self.getFps = cam_func(self, FliSdk.FliSerialCamera.GetFps)
         self.setFps = cam_func(self, FliSdk.FliSerialCamera.SetFps)
     
@@ -44,7 +44,7 @@ class FLI_CAMERA:
     def getImages(self, n) -> np.ndarray:
         ArrayType = ctypes.c_uint16 * self.width * self.height
         currentfilling = FliSdk.GetBufferFilling(self.context)
-        buffer = np.zeros((self.height, self.width))
+        buffer = np.zeros((n, self.height, self.width))
         i = 0
         while i<n:
             if FliSdk.GetBufferFilling(self.context) > currentfilling:
@@ -295,12 +295,12 @@ def Start():
         raise ConnectionError("No camera found...")
     
     if FliSdk.IsCblueOne(context):
-        return CBLUE(context)
+        return CBLUE(context, cameras_list[camId])
     elif FliSdk.IsCredOne(context):
-        return CRED(context, FliSdk.FliCredOne)
+        return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
     elif FliSdk.IsCredTwo(context):
-        return CRED(context, FliSdk.FliCredTwo)
+        return CRED(context, FliSdk.FliCredTwo, cameras_list[camId])
     elif FliSdk.IsCredThree(context):
-        return CRED(context, FliSdk.FliCredThree)
+        return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
     elif FliSdk.IsCred(context):
-        return CRED(context, FliSdk.FliCred)
+        return CRED(context, FliSdk.FliCred, cameras_list[camId])
