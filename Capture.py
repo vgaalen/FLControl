@@ -16,7 +16,6 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     timeStart = datetime.now()
     exptime = cam.getTint()
     print(exptime)
-    exptime = exptime[-1]
     # for i in range(nframes):
     #     # On CBlue no trigger is available, so we use timing
     #     sleep(exptime)
