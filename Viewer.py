@@ -341,7 +341,7 @@ class WidgetGallery(QDialog):
         self.updateProgressBar(itt=0)
         try:
             #res = execute(self.cam)
-            self.ExecThread = threading.Thread(target = self.Update, kwargs = {'progress_func': self.updateProgressBar, 'exit_status_func': self.capture_status.setText})
+            self.ExecThread = threading.Thread(target = execute, args=[self.cam], kwargs = {'progress_func': self.updateProgressBar, 'exit_status_func': self.capture_status.setText})
             self.ExecThread.start()
             #if res==1:
             #    self.capture_status.setText("Complete")
