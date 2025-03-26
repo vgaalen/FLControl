@@ -13,7 +13,7 @@ from time import sleep
 #from Capture import Initialize, get_bias, get_dark
 from Capture import capture
 
-def execute(cam, runfile="G:\\Mijn Drive\\Cblue\\runplan.csv", progress_func=None, exit_status_func=None):
+def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=None):
     folder = f"data/{datetime.now():%Y%m%d}"
     Path(folder).mkdir(parents=True, exist_ok=True)
     print(folder)
