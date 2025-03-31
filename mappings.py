@@ -87,7 +87,8 @@ class CBLUE(FLI_CAMERA):
         super().__init__(context, name=name)
         self.getTint = cam_func(self, FliSdk.FliCblueSfnc.GetExposureTime)
         self.setTint = cam_func(self, FliSdk.FliCblueSfnc.SetExposureTime)
-        self.getTemp = cam_func(self, FliSdk.FliCblueOne.GetDeviceCoolingSetpoint)
+        self.getTemp = cam_func(self, FliSdk.FliCblueSfnc.GetDeviceTemperature)
+        self.getTempSetpoint = cam_func(self, FliSdk.FliCblueOne.GetDeviceCoolingSetpoint)
         self.setTemp = cam_func(self, FliSdk.FliCblueOne.SetDeviceCoolingSetpoint)
         self.getGain = cam_func(self, FliSdk.FliCblueSfnc.GetGain)
         self.setGain = cam_func(self, FliSdk.FliCblueSfnc.SetGain)
@@ -177,6 +178,7 @@ class CRED(FLI_CAMERA):
         self.setTint = cam_func(self, self.interface.SetTint)
         self.getTemp = cam_func(self, self.interface.GetSensorTemp)
         self.setTemp = cam_func(self, self.interface.SetSensorTemp)
+        self.getTempSetpoint = cam_func(self, self.interface.GetTempSnakeSetPoint)
         self.getGain = cam_func(self, self.interface.GetConversionGain)
         self.setGain = cam_func(self, self.interface.SetConversionGain) 
         #self.getShutter = cam_func(self, FliSdk.FliCblueSfnc.GetSensorShutterMode)
@@ -213,7 +215,8 @@ class CRED(FLI_CAMERA):
         return res1*res2*res3*res4
         
     
-    def setRoi(self, status, x0, y0, w, h): #TODO: set region of interest
+    def setRoi(self, status, x0, y0, w, h):
+        #res = self.interface.SetCropping
         return False
         #self.interface.SetRoi(self.context, status, x0, y0, w, h)
     def getRoi(self):
