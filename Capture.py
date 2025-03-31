@@ -23,8 +23,8 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     #         progress_func(itt=i)
 
     #     buffer[i] = cam.getImage()
-    temps.append(cam.getTemp())
-    buffer = cam.getImages(nframes)
+    temps.append(cam.getTemp()[-1])
+    buffer = cam.getImages(nframes)[1]
     
     timeStop = datetime.now()
     # Write to fits
@@ -34,12 +34,12 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     hdr['TEMP-DET']= (f"{np.mean(temps)+274.15}", "Detector Temperature in Kelvin") # Convert temperature to Kelvin
     #hdr['TEMP-MIN']= (f"{np.min(temps)+274.15}", "Minimum Temperature Reached in Kelvin")
     #hdr['TEMP-MAX']= (f"{np.max(temps)+274.15}", "Maximum Temperature Reached in Kelvin")
-    hdr['FPS']= (f"{cam.getFps()}", "Framerate in Hz")
-    hdr['EXPTIME']= (f"{cam.getTint()}", "Exposure Time in Seconds")
-    hdr['GAIN']= (f"{cam.getGain()}", "Camera Gain Setting")
-    hdr['ROI']= (f"{cam.getRoi()}", "Region of Interest Setting [status, x0, y0, width, height]")
-    hdr['CAM_NAME']= (f"{cam.name}", "Camera Name")
-    hdr['BADPX_CORR']= (f"{cam.getBadpx()}", "State of Bad Pixel Correction")
+    hdr['FPS']= (f"{cam.getFps()[-1]}", "Framerate in Hz")
+    hdr['EXPTIME']= (f"{cam.getTint()[-1]}", "Exposure Time in Seconds")
+    hdr['GAIN']= (f"{cam.getGain()[-1]}", "Camera Gain Setting")
+    hdr['ROI']= (f"{cam.getRoi()[-1]}", "Region of Interest Setting [status, x0, y0, width, height]")
+    hdr['CAM_NAME']= (f"{cam.name[-1]}", "Camera Name")
+    hdr['BADPX_CORR']= (f"{cam.getBadpx()[-1]}", "State of Bad Pixel Correction")
     #hdr['HDR']=f"{HDR}"
     #hdr['COMMENT']=Note
     hdu = fits.PrimaryHDU(data=buffer,header=hdr)

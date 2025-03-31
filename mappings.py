@@ -3,6 +3,20 @@ import numpy as np
 from time import sleep
 import ctypes
 
+def interface(func):
+    def wrapper(*args, **kwargs):
+        try:
+            for i in range(5):
+                res = func(*args, **kwargs)
+                if res is True or (type(res) in [list, tuple] and res[0] is True):
+                    break
+            return res
+        except:
+            print(f"[Warning] {func.__name__} returned negative result")
+            return False, None
+    return wrapper
+
+
 class FLI_CAMERA:
     def __init__(self, context, name="UNKNOWN"):
         self.name = name
@@ -11,7 +25,7 @@ class FLI_CAMERA:
 
         self.getFps = cam_func(self, FliSdk.FliSerialCamera.GetFps)
         self.setFps = cam_func(self, FliSdk.FliSerialCamera.SetFps)
-    
+   
     def _update_dims(self):
         self.width, self.height = FliSdk.GetCurrentImageDimension(self.context)
 
@@ -23,14 +37,16 @@ class FLI_CAMERA:
         #self.stop()
         FliSdk.Stop(self.context)
     
-    def getRoi(self) -> tuple[int, int, int, int]:
+    @interface
+    def getRoi(self) -> tuple[True, list[int, int, int, int]]:
         res, isenabled, roi = FliSdk.GetCroppingState(self.context)
         w, h = FliSdk.GetCurrentImageDimension(self.context)
         if isenabled:
-            return [1,roi.col1, roi.row1, roi.col2-roi.col1 + 1, roi.row2-roi.row1 + 1]
+            return True, [1,roi.col1, roi.row1, roi.col2-roi.col1 + 1, roi.row2-roi.row1 + 1]
         else:
-            return  [0,0,0,w,h]
+            return  True, [0,0,0,w,h]
     
+    @interface
     def setRoi(self, status, x0, y0, width, height) -> tuple[int, int, int, int]:
         state = FliSdk.CroppingData()
         state['col1'] = x0
@@ -41,6 +57,7 @@ class FLI_CAMERA:
         self._update_dims()
         return res
     
+    @interface
     def getImages(self, n) -> np.ndarray:
         ArrayType = ctypes.c_uint16 * self.width * self.height
         currentfilling = FliSdk.GetBufferFilling(self.context)
@@ -54,14 +71,15 @@ class FLI_CAMERA:
                 buffer[i] = np.frombuffer(pa.contents, dtype=np.uint16).reshape((self.height,self.width))
                 i = i+1
                 currentfilling += 1
-        return buffer
+        return True, buffer
     
+    @interface
     def getImage(self):
         ArrayType = ctypes.c_uint16 * self.width * self.height
         pointer = FliSdk.GetRawImage(self.context, -1)
         pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
         img = np.frombuffer(pa.contents, dtype=np.uint16).reshape((self.height,self.width))
-        return img
+        return True, img
     
 
 class CBLUE(FLI_CAMERA):
@@ -82,6 +100,7 @@ class CBLUE(FLI_CAMERA):
         self.HdrMap = {'Mono8': 0, 'Mono10': 1, 'Mono12': 2}
 
         # TODO: Binning, reboot
+        # TODO: Get Temperature Setpoint
 
     def start(self):
         FliSdk.FliCblueOne.SetDeviceCoolingEnable(self.context, True)
@@ -90,17 +109,22 @@ class CBLUE(FLI_CAMERA):
         FliSdk.FliCblueOne.SetConversionEfficiency(self.context, 1)
         FliSdk.FliCblueSfnc.SetDeviceIndicatorMode(self.context, 0)
     
+    @interface
     def shutdown(self):
         FliSdk.FliCblueSfnc.ExecuteAcquisitionStop(self.context)
         self.setTemp(20)
         while self.getTemp()[-1]<15:
             sleep(1)
         FliSdk.FliCblueSfnc.ExecuteDeviceShutdown(self.context)
+        return True
     
+    @interface
     def bias(self):
         res, min_exptime = FliSdk.FliCblueOne.GetExposureTimeMinReg(self.context)
         self.setTint(min_exptime)
- 
+        return True
+    
+    @interface
     def setRoi(self, status, x0, y0, w, h):
         status = [False]
         while np.sum(status) < len(status):
@@ -110,35 +134,39 @@ class CBLUE(FLI_CAMERA):
             status.append(FliSdk.FliCblueOne.SetSparseHeight(self.context, h))
             status.append(FliSdk.FliCblueOne.SetSparseOffsetX(self.context, x0))
             status.append(FliSdk.FliCblueOne.SetSparseOffsetY(self.context, y0))
+        return True
     
+    @interface
     def setShutter(self, shutter):
         if shutter in self.ShutterMap:
-            res = False
-            while not res:
-                res = FliSdk.FliCblueSfnc.GetSensorShutterMode(self.context, self.ShutterMap[shutter])
+            res = FliSdk.FliCblueSfnc.GetSensorShutterMode(self.context, self.ShutterMap[shutter])
         else:
             raise NotImplementedError("")
+        return True
     
+    @interface
     def getShutter(self):
-        res = False
-        while not res:
-            res, val = FliSdk.FliCblueSfnc.GetSensorShutterMode(self.context)
+        res, val = FliSdk.FliCblueSfnc.GetSensorShutterMode(self.context)
         for key, ind in self.ShutterMap:
             if ind==val:
-                return key
+                return True, key
+        return False
     
+    @interface
     def setHdr(self, mode):
         if mode in self.HdrMap:
-            FliSdk.FliCblueSfnc.SetPixelFormat(self.context, self.HdrMap[mode])
+            res = FliSdk.FliCblueSfnc.SetPixelFormat(self.context, self.HdrMap[mode])
         else:
             raise NotImplementedError("")
-    
+        return True
+   
+    @interface
     def getHdr(self):
         res, val = FliSdk.FliCblueSfnc.GetPixelFormat(self.context)
         for key, ind in self.ShutterMap:
             if ind==val:
                 return key
-
+        return False
 
 
 class CRED(FLI_CAMERA):
@@ -167,29 +195,32 @@ class CRED(FLI_CAMERA):
         self.interface.EnableBadPixel(self.context, False)
         FliSdk.FliCred.EnableLed(self.context, False)
 
-    
+    @interface
     def shutdown(self):
         self.Stop()
         self.setTemp(20)
         while self.getTemp()<15:
             print(self.getTemp())
             sleep(1)
+        return True
     
+    @interface
     def bias(self):
-        res, max = self.interface.GetMaxFpsUsb(self.context)
-        self.setFps(max)
-        res, min, max = self.interface.GetTintRange(self.context)
-        self.setTint(min)
+        res1, max = self.interface.GetMaxFpsUsb(self.context)
+        res2 = self.setFps(max)
+        res3, min, max = self.interface.GetTintRange(self.context)
+        res4 = self.setTint(min)
+        return res1*res2*res3*res4
         
     
     def setRoi(self, status, x0, y0, w, h): #TODO: set region of interest
-        return 0
+        return False
         #self.interface.SetRoi(self.context, status, x0, y0, w, h)
     def getRoi(self):
-        return 0
+        return False
         #self.interface.GetRoi(self.context)
     def getShutter(self):
-        return 0
+        return False
         #raise NotImplementedError("")
     def setShutter(self):
         raise NotImplementedError("")
@@ -244,6 +275,7 @@ class cam_func:
         self.cam = cam
         self.convert = convert
     
+    @interface
     def __call__(self, *args, **kwargs):
         state = False
         while not state:
@@ -255,11 +287,8 @@ class cam_func:
                 state = res[0]
             else:
                 state = res
-        
-        if type(res) == list or type(res) == tuple:
-            return res[-1]
-        else:
-            return res
+        return res
+
 
 class dao_func:
     def __init__(self, shm):

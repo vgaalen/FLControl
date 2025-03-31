@@ -45,8 +45,8 @@ def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=Non
                 print('b')
                 cam.bias()
                 print('c')
-                if np.abs(cam.getTemp() - el.temp) > 0.1:
-                    while np.abs(cam.getTemp() - el.temp) > 0.1:
+                if np.abs(cam.getTemp()[-1] - el.temp) > 0.1:
+                    while np.abs(cam.getTemp()[-1] - el.temp) > 0.1:
                         print("Cooling Down")
                         sleep(1)
                     print("Cooled Down")
@@ -62,8 +62,8 @@ def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=Non
                 cam.setGain(el.gain)
                 cam.setTint(el.exptime)
                 cam.setFps(el.fps)
-                if np.abs(cam.getTemp() - el.temp) > 0.1:
-                    while np.abs(cam.getTemp() - el.temp) > 0.1:
+                if np.abs(cam.getTemp()[-1] - el.temp) > 0.1:
+                    while np.abs(cam.getTemp()[-1] - el.temp) > 0.1:
                         sleep(1)
                     sleep(5*60) # Sleep for an additional 5min to let the chip get into an equilibrium
 
@@ -76,8 +76,8 @@ def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=Non
                 cam.setTemp(el.temp)
                 cam.setGain(el.gain)
                 cam.setTint(el.exptime)
-                if np.abs(cam.getTemp() - el.temp) > 0.1:
-                    while np.abs(cam.getTemp() - el.temp) > 0.1:
+                if np.abs(cam.getTemp()[-1] - el.temp) > 0.1:
+                    while np.abs(cam.getTemp()[-1] - el.temp) > 0.1:
                         sleep(1)
                     sleep(5*60) # Sleep for an additional 5min to let the chip get into an equilibrium
                 

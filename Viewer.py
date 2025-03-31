@@ -257,7 +257,7 @@ class WidgetGallery(QDialog):
     def Update(self, interval=0.1): 
         while self.running:
             # update image
-            img = self.cam.getImage()
+            img = self.cam.getImage()[1]
             cmap = self.ax.imshow(img, vmin=self.vmin, vmax=self.vmax)
             #cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
             self.cbar.remove()
@@ -352,8 +352,7 @@ class WidgetGallery(QDialog):
     
     def auto_scale(self):
         print("set scale")
-        img = np.zeros((100,100))#cam.getImage
-        img[1,1]= 1
+        img = self.cam.getImage()[1]
         self.vmin = np.mean(img)-3*np.std(img)
         self.vmax = np.mean(img)+3*np.std(img)
 
