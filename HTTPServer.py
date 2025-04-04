@@ -1,3 +1,9 @@
+"""
+Script to enable the HTTP Server on a CRed Camera
+Writes the IP Address and password to disk (username is adminnc)
+Camera needs to be connected via USB for at least 20s
+"""
+
 import sdk.FliSdk_V2 as FliSdk
 from time import sleep
 
@@ -6,8 +12,9 @@ context = FliSdk.Init()
 grabbers_list = FliSdk.DetectGrabbers(context)
 cameras_list = FliSdk.DetectCameras(context)
 
-while len(cameras_list)==0:
+while len(cameras_list)==0 or cameras_list[0]=='Usb#':
     sleep(1)
+    grabbers_list = FliSdk.DetectGrabbers(context)
     cameras_list = FliSdk.DetectCameras(context)
 
 print(f"camera selected: {cameras_list[0]}")
@@ -17,16 +24,21 @@ if cameras_list[0]!='Usb#' and len(cameras_list)>=1:
     res = FliSdk.SetCamera(context, cameras_list[0])
     FliSdk.Update(context)
 else:
+    print(cameras_list)
     raise ConnectionError("No camera found...")
 
 if FliSdk.IsCredTwo(context):
     res = False
     while not res:
         res = FliSdk.FliCredTwo.StartHttpServer(context)
+        #res = FliSdk.FliCredTwo.StartEthernetGrabber(context)
     res, ip = False, ""
     while not res or ip=="":
+        print(FliSdk.FliCred.SetIpAutomatic(context))
+        print(FliSdk.FliCred.SetIpRefresh(context))
+        print(FliSdk.FliCred.GetIpConfig(context))
         res, ip = FliSdk.FliCredTwo.GetIpAddress(context)
-    print(ip)
+        print(ip)
     res, password = False, ""
     while not res or password=="":
         res, password = FliSdk.FliCred.GetSshPassword(context)
@@ -35,8 +47,9 @@ else:
     raise NotImplementedError("")
 
 with open('httpserver.txt', 'a') as f:
-    f.write(f"{cameras_list[0]}")
-    f.write(f"IP-ADDRESS {ip}")
-    f.write(f"PASSWORD {password}")
+    f.write(f"{cameras_list[0]}\n")
+    f.write(f"IP-ADDRESS {ip}\n")
+    f.write(f"PASSWORD {password}\n")
+    f.write("\n")
 
 
