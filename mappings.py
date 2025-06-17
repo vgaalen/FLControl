@@ -217,13 +217,13 @@ class CRED(FLI_CAMERA):
     
     def setRoi(self, status, x0, y0, w, h):
         #res = self.interface.SetCropping
-        return False
+        return [False]
         #self.interface.SetRoi(self.context, status, x0, y0, w, h)
     def getRoi(self):
-        return False
+        return [False]
         #self.interface.GetRoi(self.context)
     def getShutter(self):
-        return False
+        return [False]
         #raise NotImplementedError("")
     def setShutter(self):
         raise NotImplementedError("")

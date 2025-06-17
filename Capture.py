@@ -9,7 +9,7 @@ from os.path import isfile
 #from cblue import *
 
 def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
-    height, width = cam.getImage().shape
+    height, width = cam.getImage()[1].shape
     temps = []
     cam.setBadpx(False)
     #buffer = np.zeros((nframes, height, width), dtype=np.uint16)
