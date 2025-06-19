@@ -297,13 +297,6 @@ class WidgetGallery(QDialog):
             except ValueError:
                 print(f"FPS is not a Float: {fps}")
         
-        if self.gain_in.isModified():
-            gain = self.gain_in.text()
-            try:
-                self.cam.set('gain', gain)
-            except ValueError:
-                print(f"Gain is not a Float: {gain}")
-        
         if self.temp_in.isModified():
             temp = self.temp_in.text()
             try:
@@ -317,7 +310,10 @@ class WidgetGallery(QDialog):
                 self.cam.set_roi(*roi)
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
-        
+
+        if self.gain_in.currentText() != self.gain:
+            self.cam.set('gain', self.gain.currentText())
+
         if self.shutter_in.currentText() != self.shutter:
             self.cam.set('shutter_mode', self.shutter_in.currentText())
         

@@ -34,13 +34,17 @@ class PI_CAMERA:
         self.gain_modes = self.cam.get_attribute('ADC Analog Gain').values
 
     def set(self, attribute, value):
+        self.cam.stop_acquisition()
         self.cam.set_attribute_value(self.translate[attribute], value)
+        self.cam.start_acquisition()
 
     def get(self, attribute):
         return self.cam.get_attribute_value(self.translate[attribute])
     
     def set_roi(self, xmin, xmax, ymin, ymax, xbin=1, ybin=1):
+        self.cam.stop_acquisition()
         self.cam.set_roi(xmin, xmax, ymin, ymax, xbin, ybin)
+        self.cam.start_acquisition()
     
     def get_roi(self):
         self.get('roi')
