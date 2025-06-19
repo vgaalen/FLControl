@@ -98,10 +98,6 @@ class WidgetGallery(QDialog):
         self.fps_label = QLabel("&FPS:")
         self.fps_label.setBuddy(self.fps_in)
         self.fps_out = QLabel("?")
-        self.gain_in = QLineEdit("1")
-        self.gain_label = QLabel("&Gain:")
-        self.gain_label.setBuddy(self.gain_in)
-        self.gain_out = QLabel("?")
         self.temp_in = QLineEdit("20")
         self.temp_label = QLabel("&Temperature")
         self.temp_label.setBuddy(self.temp_in)
@@ -110,25 +106,40 @@ class WidgetGallery(QDialog):
         self.roi_label = QLabel("&Region of Interest:")
         self.roi_label.setBuddy(self.roi_in)
         self.roi_out = QLabel("?")
+        
+        # self.gain_in = QLineEdit("1")
+        # self.gain_label = QLabel("&Gain:")
+        # self.gain_label.setBuddy(self.gain_in)
+        # self.gain_out = QLabel("?")
+        self.gain_in = QComboBox()
+        if DEMO:
+            self.gain_in.addItems(['Low', 'High'])
+        else:
+            self.gain_in.addItems(list(self.cam.gain_modes))
+        self.gain_label = QLabel("&Gain Mode:")
+        self.gain_label.setBuddy(self.gain_in)
+        self.gain_out = QLabel("?")
+        self.gain = self.gain_in.currentText()
+
         self.shutter_in = QComboBox()
         if DEMO:
             self.shutter_in.addItems(['Global', 'Rolling'])
         else:
-            self.shutter_in.addItems(list(self.cam.ShutterMap.keys()))
+            self.shutter_in.addItems(list(self.cam.shutter_modes))
         self.shutter_label = QLabel("&Shutter Mode:")
         self.shutter_label.setBuddy(self.shutter_in)
         self.shutter_out = QLabel("?")
         self.shutter = self.shutter_in.currentText()
 
-        self.hdr_in = QComboBox()
+        self.readout_mode_in = QComboBox()
         if DEMO:
-            self.hdr_in.addItems(['On', 'Off'])
+            self.readout_mode_in.addItems(['On', 'Off'])
         else:
-            self.shutter_in.addItems(list(self.cam.HdrMap.keys()))
-        self.hdr_label = QLabel("&HDR Mode:")
-        self.hdr_label.setBuddy(self.hdr_in)
-        self.hdr_out = QLabel("?")
-        self.hdr = self.hdr_in.currentText()
+            self.readout_mode_in.addItems(list(self.cam.readout_modes))
+        self.readout_mode_label = QLabel("&ReadOut Mode:")
+        self.readout_mode_label.setBuddy(self.readout_mode_in)
+        self.readout_mode_out = QLabel("?")
+        self.readout_mode = self.readout_mode_in.currentText() # TODO: read value from cam instead of from box
 
         self.vmin_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
         self.vmin_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
@@ -167,21 +178,21 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.fps_label, 1, 0)
         layout.addWidget(self.fps_in, 1, 1)
         layout.addWidget(self.fps_out, 1, 2)
-        layout.addWidget(self.gain_label, 2, 0)
-        layout.addWidget(self.gain_in, 2, 1)
-        layout.addWidget(self.gain_out, 2, 2)
         layout.addWidget(self.temp_label, 3, 0)
         layout.addWidget(self.temp_in, 3, 1)
         layout.addWidget(self.temp_out, 3, 2)
         layout.addWidget(self.roi_label, 4, 0)
         layout.addWidget(self.roi_in, 4, 1)
         layout.addWidget(self.roi_out, 4, 2)
+        layout.addWidget(self.gain_label, 2, 0)
+        layout.addWidget(self.gain_in, 2, 1)
+        layout.addWidget(self.gain_out, 2, 2)
         layout.addWidget(self.shutter_label, 5, 0)
         layout.addWidget(self.shutter_in, 5, 1)
         layout.addWidget(self.shutter_out, 5, 2)
-        layout.addWidget(self.hdr_label, 6, 0)
-        layout.addWidget(self.hdr_in, 6, 1)
-        layout.addWidget(self.hdr_out, 6, 2)
+        layout.addWidget(self.readout_mode_label, 6, 0)
+        layout.addWidget(self.readout_mode_in, 6, 1)
+        layout.addWidget(self.readout_mode_out, 6, 2)
         layout.addWidget(self.vmin_label, 7, 0)
         layout.addWidget(self.vmin_slider, 7, 1)
         layout.addWidget(self.vmin_value, 7, 2)
@@ -249,7 +260,7 @@ class WidgetGallery(QDialog):
     
     def Shutdown(self):
         self.Stop()
-        self.cam.shutdown()
+        self.cam.Shutdown()
         self.running = False
         self.loop.join(timeout=60)
         self.close()
@@ -257,7 +268,7 @@ class WidgetGallery(QDialog):
     def Update(self, interval=0.1): 
         while self.running:
             # update image
-            img = self.cam.getImage()[1]
+            img = self.cam.getImage()
             cmap = self.ax.imshow(img, vmin=self.vmin, vmax=self.vmax)
             #cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
             self.cbar.remove()
@@ -269,12 +280,12 @@ class WidgetGallery(QDialog):
 
             # fetch camera metadata
             #self.fps_out.setText(self.shm['fps'].get_data(check=True))
-            self.fps_out.setText(str(self.cam.getFps()))
-            self.gain_out.setText(str(self.cam.getGain()))
-            self.temp_out.setText(str(self.cam.getTemp()))
-            self.roi_out.setText(str(self.cam.getRoi()))
-            self.shutter_out.setText(str(self.cam.getShutter()))
-            self.hdr_out.setText(str(self.cam.getHdr()))
+            self.fps_out.setText(str(self.cam.get('fps')))
+            self.gain_out.setText(str(self.cam.get('gain')))
+            self.temp_out.setText(str(self.cam.get('temp-det')))
+            self.roi_out.setText(str(self.cam.get('roi')))
+            self.shutter_out.setText(str(self.cam.get('shutter_mode')))
+            self.readout_mode_out.setText(str(self.cam.get('readout_mode')))
             #sleep(interval)
 
     def Apply(self):
@@ -282,36 +293,36 @@ class WidgetGallery(QDialog):
         if self.fps_in.isModified():
             fps = self.fps_in.text()
             try:
-                self.cam.setFps(float(fps))#getDouble())
+                self.cam.set('fps', float(fps))#getDouble())
             except ValueError:
                 print(f"FPS is not a Float: {fps}")
         
         if self.gain_in.isModified():
             gain = self.gain_in.text()
             try:
-                self.cam.setGain(gain)
+                self.cam.set('gain', gain)
             except ValueError:
                 print(f"Gain is not a Float: {gain}")
         
         if self.temp_in.isModified():
             temp = self.temp_in.text()
             try:
-                self.cam.setTemp(float(temp))
+                self.cam.set('temp-set', float(temp))
             except ValueError:
                 print(f"Temp is not a Float: {temp}")
         
         if self.roi_in.isModified():
             roi = np.fromstring(self.roi_in.text(),sep=',')
             try:
-                self.cam.setRoi(*roi)
+                self.cam.set_roi(*roi)
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
         
         if self.shutter_in.currentText() != self.shutter:
-            self.cam.setShutter(self.shutter_in.currentText())
+            self.cam.set('shutter_mode', self.shutter_in.currentText())
         
-        if self.hdr_in.currentText() != self.hdr:
-            self.cam.setHdr(self.hdr_in.currentText())
+        if self.readout_mode_in.currentText() != self.readout_mode:
+            self.cam.set('readout_mode', self.readout_mode_in.currentText())
     
     def apply_vmin(self, value):
         self.vmin = value

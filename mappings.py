@@ -3,6 +3,73 @@ import numpy as np
 from time import sleep
 import ctypes
 
+class PI_CAMERA:
+    def __init__(self):
+        import os
+        from pathlib import Path
+        libpath = Path("C:\\Program Files")
+        os.add_dll_directory(libpath)
+
+        import pylablib as pll
+        pll.par["devices/dlls/picam"] = "C:\\Program Files\\Common Files\\Princeton Instruments\\Picam\\Runtime"
+        from pylablib.devices import PrincetonInstruments
+
+        cam_list = print(PrincetonInstruments.list_cameras())
+        print(cam_list)
+        self.cam_sn = input("Give the serial number of the desired camera")
+
+        self.cam = PrincetonInstruments.PicamCamera(self.cam_sn)
+
+        self.translate = {'fps': 'Frame Rate Calculation',
+                          'exptime': 'Exposure Time',
+                          'roi': 'ROIs',
+                          'readout_modes': 'ADC Quality',
+                          'shutter_mode': 'Readout Control Mode',
+                          'gain': 'ADC Analog Gain',
+                          'temp-set': 'Sensor Temperature Set Point',
+                          'temp-det': ['Sensor Temperature Status', 'Sensor Temperature Reading']}
+        
+        self.readout_modes = self.cam.get_attribute('ADC Quality').values
+        self.shutter_modes = self.cam.get_attribute('Readout Control Mode').values
+        self.gain_modes = self.cam.get_attribute('ADC Analog Gain').values
+
+    def set(self, attribute, value):
+        self.cam.set_attribute_value(self.translate[attribute], value)
+
+    def get(self, attribute):
+        return self.cam.get_attribute_value(self.translate[attribute])
+    
+    def set_roi(self, xmin, xmax, ymin, ymax, xbin=1, ybin=1):
+        self.cam.set_roi(xmin, xmax, ymin, ymax, xbin, ybin)
+    
+    def get_roi(self):
+        self.get('roi')
+    
+    def Stop(self):
+        self.cam.stop_acquisition()
+    
+    def Start(self):
+        self.cam.start_acquisition()
+    
+    def Shutdown(self):
+        self.Stop()
+        self.set('Sensor Temperature Set Point', 20)
+        while self.get('Sensor Temperature Reading')[-1]<15:
+            sleep(1)
+        return True
+
+    def getImages(self, n) -> np.ndarray:
+        self.cam.stop_acquisition()
+        img = self.cam.grab(10)
+        self.cam.start_acquisition()
+        return img
+    
+    def getImage(self):
+        self.cam.stop_acquisition()
+        img = self.cam.snap()
+        self.cam.start_acquisition()
+        return img
+
 def interface(func):
     def wrapper(*args, **kwargs):
         try:
@@ -16,6 +83,7 @@ def interface(func):
             return False, None
     return wrapper
 
+# TODO Refactor FLI_Camera to use cam.get(attribute, value) format and convert into FLI sdk format
 
 class FLI_CAMERA:
     def __init__(self, context, name="UNKNOWN"):
