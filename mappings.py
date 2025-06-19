@@ -1,4 +1,3 @@
-import sdk.FliSdk_V2 as FliSdk
 import numpy as np
 from time import sleep
 import ctypes
@@ -381,6 +380,7 @@ def Start():
     if camera_interface == '0':
        return PI_CAMERA()
     elif camera_interface == '1':
+        import sdk.FliSdk_V2 as FliSdk
         context = FliSdk.Init()
         # call before DetectCameras or it fails for some reason ...
         grabbers_list = FliSdk.DetectGrabbers(context)
