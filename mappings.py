@@ -373,34 +373,40 @@ class dao_func:
 
 
 def Start():
-    context = FliSdk.Init()
-    # call before DetectCameras or it fails for some reason ...
-    grabbers_list = FliSdk.DetectGrabbers(context)
-    for s in grabbers_list:
-        print('- '+s)
-    cameras_list = FliSdk.DetectCameras(context)
-    print(f"{len(cameras_list)} cameras detected")
-    print("Select the camera")
-    for k in range(len(cameras_list)):
-        print(f"{k} : {cameras_list[k]}")
-    print("select camera #:")
-    camId = int(input())
-    print(f"camera {camId} selected: {cameras_list[camId]}")
+    camera_interface = input("type 0 for picam camera, 1 for first light camera")
+    if camera_interface == '0':
+       return PI_CAMERA()
+    elif camera_interface == '1':
+        context = FliSdk.Init()
+        # call before DetectCameras or it fails for some reason ...
+        grabbers_list = FliSdk.DetectGrabbers(context)
+        for s in grabbers_list:
+            print('- '+s)
+        cameras_list = FliSdk.DetectCameras(context)
+        print(f"{len(cameras_list)} cameras detected")
+        print("Select the camera")
+        for k in range(len(cameras_list)):
+            print(f"{k} : {cameras_list[k]}")
+        print("select camera #:")
+        camId = int(input())
+        print(f"camera {camId} selected: {cameras_list[camId]}")
 
-    # if camera is available
-    if cameras_list[0]!='Usb#' and len(cameras_list)>=1:
-        res = FliSdk.SetCamera(context, cameras_list[camId])
-        FliSdk.Update(context)
+        # if camera is available
+        if cameras_list[0]!='Usb#' and len(cameras_list)>=1:
+            res = FliSdk.SetCamera(context, cameras_list[camId])
+            FliSdk.Update(context)
+        else:
+            raise ConnectionError("No camera found...")
+        
+        if FliSdk.IsCblueOne(context):
+            return CBLUE(context, cameras_list[camId])
+        elif FliSdk.IsCredOne(context):
+            return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
+        elif FliSdk.IsCredTwo(context):
+            return CRED(context, FliSdk.FliCredTwo, cameras_list[camId])
+        elif FliSdk.IsCredThree(context):
+            return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
+        elif FliSdk.IsCred(context):
+            return CRED(context, FliSdk.FliCred, cameras_list[camId])
     else:
-        raise ConnectionError("No camera found...")
-    
-    if FliSdk.IsCblueOne(context):
-        return CBLUE(context, cameras_list[camId])
-    elif FliSdk.IsCredOne(context):
-        return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
-    elif FliSdk.IsCredTwo(context):
-        return CRED(context, FliSdk.FliCredTwo, cameras_list[camId])
-    elif FliSdk.IsCredThree(context):
-        return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
-    elif FliSdk.IsCred(context):
-        return CRED(context, FliSdk.FliCred, cameras_list[camId])
+        raise NotImplementedError('')
