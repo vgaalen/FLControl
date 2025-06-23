@@ -17,7 +17,7 @@ plt.ion()
 # TODO: Put parameter setpoints in fill-in sections
 
 global DEMO
-DEMO = False#True
+DEMO = True
 
 if not DEMO:
     from Capture import capture
@@ -210,7 +210,14 @@ class WidgetGallery(QDialog):
         self.ControlGroupBox.setLayout(layout)
     
     def createCaptureControlGroupBox(self):
-        self.CaptureGroupBox = QGroupBox("Control Panel")
+        self.CaptureGroupBox = QGroupBox("Capture Panel")
+
+        self.location = QLineEdit("Clean Room @ OAPD")
+        self.location_label = QLabel("&Location")
+        self.location_label.setBuddy(self.location)
+        self.temp_amb = QLineEdit()
+        self.temp_amb_label = QLabel("&Ambient Temperature in °C")
+        self.temp_amb_label.setBuddy(self.temp_amb)
 
         self.nframes = QLineEdit()
         self.nframes_label = QLabel("&# of Frames")
@@ -230,13 +237,15 @@ class WidgetGallery(QDialog):
         self.execute_status = QLabel(" ")
 
         layout = QGridLayout()
-        layout.addWidget(self.nframes_label, 1, 0)
-        layout.addWidget(self.nframes, 1, 1)
-        layout.addWidget(self.filename_label, 2, 0)
-        layout.addWidget(self.filename, 2, 1)
-        layout.addWidget(self.capture_status, 3, 2)
-        layout.addWidget(self.capture_button, 3, 1)
-        layout.addWidget(self.execute_button, 3, 0)
+        layout.addWidget(self.temp_amb_label, 1, 0)
+        layout.addWidget(self.temp_amb, 1, 1)
+        layout.addWidget(self.nframes_label, 2, 0)
+        layout.addWidget(self.nframes, 2, 1)
+        layout.addWidget(self.filename_label, 3, 0)
+        layout.addWidget(self.filename, 3, 1)
+        layout.addWidget(self.capture_status, 4, 2)
+        layout.addWidget(self.capture_button, 4, 1)
+        layout.addWidget(self.execute_button, 4, 0)
         self.CaptureGroupBox.setLayout(layout)
 
     def createProgressBar(self): 
@@ -344,11 +353,13 @@ class WidgetGallery(QDialog):
     
     def Capture(self): 
         self.capture_status.setText("Recording")
+        location = self.location.text()
+        temp_amb = float(self.temp_amb.text())
         nframes = int(self.nframes.text())
         file = self.filename.text()
         self.updateProgressBar(itt=0, range=nframes)
         try:
-            res = capture(self.cam,nframes,self.updateProgressBar,file=file)
+            res = capture(self.cam,nframes,self.updateProgressBar,file=file, location=location, temp_amb=temp_amb)
             if res==1:
                 self.capture_status.setText("Complete")
             else:
