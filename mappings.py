@@ -1,3 +1,4 @@
+
 import numpy as np
 from time import sleep
 import ctypes
@@ -15,63 +16,152 @@ class PI_CAMERA:
 
         cam_list = print(PrincetonInstruments.list_cameras())
         print(cam_list)
-        self.cam_sn = input("Give the serial number of the desired camera")
+        self.cam_sn = input("Give the serial number of the desired camera\n")
 
         self.cam = PrincetonInstruments.PicamCamera(self.cam_sn)
 
         self.translate = {'fps': 'Frame Rate Calculation',
                           'exptime': 'Exposure Time',
                           'roi': 'ROIs',
-                          'readout_modes': 'ADC Quality',
+                          'readout_mode': 'ADC Quality',
                           'shutter_mode': 'Readout Control Mode',
                           'gain': 'ADC Analog Gain',
                           'temp-set': 'Sensor Temperature Set Point',
-                          'temp-det': ['Sensor Temperature Status', 'Sensor Temperature Reading']}
+                          'temp-det': 'Sensor Temperature Reading',
+                          'bit-depth': 'ADC Bit Depth'} # ['Sensor Temperature Status', 'Sensor Temperature Reading']
         
         self.readout_modes = self.cam.get_attribute('ADC Quality').values
         self.shutter_modes = self.cam.get_attribute('Readout Control Mode').values
         self.gain_modes = self.cam.get_attribute('ADC Analog Gain').values
 
     def set(self, attribute, value):
-        self.cam.stop_acquisition()
-        self.cam.set_attribute_value(self.translate[attribute], value)
-        self.cam.start_acquisition()
+        print(self.cam.get_attribute(self.translate[attribute]).values)
+        print(value)
+        #self.cam.stop_acquisition()
+        self.Stop()
+        if attribute not in self.translate.keys():
+            print(f"[Warning]: Unknown attribute, {attribute}")
+            return
+        if self.cam.get_attribute(self.translate[attribute]).writable:
+            if type(value) in [int, float]:
+                self.cam.set_attribute_value(self.translate[attribute], value)
+            else:
+                if value in self.cam.get_attribute(self.translate[attribute]).values or value == 'High Dynamic Range':
+                    self.cam.set_attribute_value(self.translate[attribute], value)
+                else:
+                    print(f"[Warning]: {value} is not valid for parameter {self.translate[attribute]}. Options are {self.cam.get_attribute(self.translate[attribute]).values}")
+        else:
+            print(f"[Warning]: attribute '{self.translate[attribute]}' is not writable")
+        #self.cam.start_acquisition()
 
     def get(self, attribute):
         return self.cam.get_attribute_value(self.translate[attribute])
     
     def set_roi(self, xmin, xmax, ymin, ymax, xbin=1, ybin=1):
-        self.cam.stop_acquisition()
+        #self.cam.stop_acquisition()
+        self.Stop()
         self.cam.set_roi(xmin, xmax, ymin, ymax, xbin, ybin)
-        self.cam.start_acquisition()
+        #self.cam.start_acquisition()
     
     def get_roi(self):
-        self.get('roi')
+        roi = self.get('roi')
+        print(roi[0])
+        return f"x0:{roi[0].x}, w:{roi[0].width}, y0:{roi[0].y}, h:{roi[0].height}, x_bin:{roi[0].x_binning}, y_bin:{roi[0].y_binning}"
+    
+    def set_readout_mode(self, mode):
+        self.Stop()
+        if mode == 'High Speed':
+            # self.set('readout_mode', mode)
+            # self.set('bit-depth', '14 bits')
+            # self.gain_modes = ['Low', 'High']
+            settings = self.cam.get_all_attribute_values()
+            print(settings[self.translate['readout_mode']], settings[self.translate['shutter_mode']],settings[self.translate['gain']])
+            settings[self.translate['readout_mode']] = mode
+            settings[self.translate['bit-depth']] = 14
+            #settings[self.translate['shutter_mode']] = 'Rolling Shutter'
+            #settings[self.translate['gain']] = ''#'Low'#'Medium#'High'#0#'HDR'
+            self.cam.set_all_attribute_values(settings)
+            print(self.cam.get_attribute(self.translate['gain']).values)
+            print('done')
+        elif mode == 'Low Noise':
+            self.set('readout_mode', mode)
+            self.set('bit-depth', 16)
+            self.set('gain', 'Low')
+            self.gain_modes = ['Low']
+            # settings = self.cam.get_all_attribute_values()
+            # print(settings[self.translate['readout_mode']], settings[self.translate['shutter_mode']],settings[self.translate['gain']])
+            # settings[self.translate['readout_mode']] = mode
+            # settings[self.translate['bit-depth']] = 16
+            # #settings[self.translate['shutter_mode']] = 'Rolling Shutter'
+            # settings[self.translate['gain']] = 'Low'#'Medium#'High'#0#'HDR'
+            # self.cam.set_all_attribute_values(settings)
+            # print(self.cam.get_attribute(self.translate['gain']).values)
+            print('done')
+        elif mode == 'High Dynamic Range':
+            print("[Warning]: High Dynamic Range mode is unavailable")
+            # self.set('readout_mode', mode)
+            # self.set('bit-depth', 18)
+            # self.set('shutter_mode', 'Rolling Shutter')
+            # self.set('gain', 'High Dynamic Range')
+            # self.gain_modes = ['']
+            # print('done')
+            # settings = self.cam.get_all_attribute_values()
+            # print(settings[self.translate['readout_mode']], settings[self.translate['shutter_mode']],settings[self.translate['gain']])
+            # settings[self.translate['readout_mode']] = mode
+            # settings[self.translate['bit-depth']] = 18
+            # settings[self.translate['shutter_mode']] = 'Rolling Shutter'
+            # settings[self.translate['gain']] = ''#'Low'#'Medium#'High'#0#'HDR'
+            # self.cam.set_all_attribute_values(settings)
+            # print(self.cam.get_attribute(self.translate['gain']).values)
+        else:
+            print(f"[Warning]: {mode} is not valid for parameter {self.translate['readout_mode']}. Options are {self.cam.get_attribute(self.translate['readout_mode']).values}")
     
     def Stop(self):
-        self.cam.stop_acquisition()
+        print(self.cam.acquisition_in_progress())
+        if self.cam.acquisition_in_progress() == 1:
+            self.cam.stop_acquisition()
+            sleep(1)
+        else:
+            pass
     
     def Start(self):
-        self.cam.start_acquisition()
+        if self.cam.acquisition_in_progress() == 0:
+            self.cam.start_acquisition()
+        else:
+            pass
+        print(self.cam.get_attribute(self.translate['gain']).values)
     
     def Shutdown(self):
-        self.Stop()
-        self.set('Sensor Temperature Set Point', 20)
-        while self.get('Sensor Temperature Reading')[-1]<15:
-            sleep(1)
+        # TODO: Change for actual camera
+        #self.Stop()
+        self.cam.close()
+        #self.set('Sensor Temperature Set Point', 20)
+        #while self.get('Sensor Temperature Reading')[-1]<15:
+        #    sleep(1)
         return True
 
     def getImages(self, n) -> np.ndarray:
-        self.cam.stop_acquisition()
-        img = self.cam.grab(10)
-        self.cam.start_acquisition()
-        return img
+        if self.cam.acquisition_in_progress() == 0:
+            return [0]
+        buffer = [0]*n
+        for i in range(n):
+            self.cam.wait_for_frame()
+            buffer[i] = self.cam.read_newest_image()
+        return buffer
     
     def getImage(self):
-        self.cam.stop_acquisition()
-        img = self.cam.snap()
-        self.cam.start_acquisition()
-        return img
+        if self.cam.acquisition_in_progress() == 0:
+            return [0]
+        try:
+            self.cam.wait_for_frame()
+            img = self.cam.read_newest_image()
+        except:
+            return [0]
+        
+        if img is None:
+            return [1, np.zeros((5,5))]
+        else:
+            return [1, img]
 
 def interface(func):
     def wrapper(*args, **kwargs):
@@ -376,7 +466,7 @@ class dao_func:
 
 
 def Start():
-    camera_interface = input("type 0 for picam camera, 1 for first light camera")
+    camera_interface = input("type 0 for picam camera, 1 for first light camera\n")
     if camera_interface == '0':
        return PI_CAMERA()
     elif camera_interface == '1':

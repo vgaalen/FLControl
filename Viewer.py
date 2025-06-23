@@ -54,7 +54,9 @@ class WidgetGallery(QDialog):
         if not DEMO:
             print('a')
             self.context = self.cam.Start()
-            self.Start()
+            #self.Start()
+
+        self.loop = None
 
     def advanceProgressBar(self):
         curVal = self.progressBar.value()
@@ -94,15 +96,15 @@ class WidgetGallery(QDialog):
         # Settings Panel
         self.set_point_label = QLabel("Set Point")
         self.cam_status_label = QLabel("Status")
-        self.fps_in = QLineEdit("100")
-        self.fps_label = QLabel("&FPS:")
-        self.fps_label.setBuddy(self.fps_in)
-        self.fps_out = QLabel("?")
-        self.temp_in = QLineEdit("20")
+        self.exptime_in = QLineEdit("")
+        self.exptime_label = QLabel("&Exptime:")
+        self.exptime_label.setBuddy(self.exptime_in)
+        self.exptime_out = QLabel("?")
+        self.temp_in = QLineEdit("")
         self.temp_label = QLabel("&Temperature")
         self.temp_label.setBuddy(self.temp_in)
         self.temp_out = QLabel("?")
-        self.roi_in = QLineEdit("0,0,0,0,0")
+        self.roi_in = QLineEdit("")
         self.roi_label = QLabel("&Region of Interest:")
         self.roi_label.setBuddy(self.roi_in)
         self.roi_out = QLabel("?")
@@ -175,9 +177,9 @@ class WidgetGallery(QDialog):
         layout = QGridLayout()
         layout.addWidget(self.set_point_label, 0, 1)
         layout.addWidget(self.cam_status_label, 0, 2)
-        layout.addWidget(self.fps_label, 1, 0)
-        layout.addWidget(self.fps_in, 1, 1)
-        layout.addWidget(self.fps_out, 1, 2)
+        layout.addWidget(self.exptime_label, 1, 0)
+        layout.addWidget(self.exptime_in, 1, 1)
+        layout.addWidget(self.exptime_out, 1, 2)
         layout.addWidget(self.temp_label, 3, 0)
         layout.addWidget(self.temp_in, 3, 1)
         layout.addWidget(self.temp_out, 3, 2)
@@ -249,6 +251,9 @@ class WidgetGallery(QDialog):
             self.progressBar.setValue(itt)
     
     def Start(self, interval=1):
+        while self.loop is not None and self.loop.is_alive():
+            self.running = False
+            sleep(1)
         self.running = True
         self.context = self.cam.Start()
         self.loop = threading.Thread(target = self.Update)#, args = (interval))
@@ -256,10 +261,12 @@ class WidgetGallery(QDialog):
         #self.Update()
     
     def Stop(self):
+        self.running = False
+        self.loop.join(timeout=60)
         self.cam.Stop()
     
     def Shutdown(self):
-        self.Stop()
+        #self.Stop() # TODO: change for actual camera
         self.cam.Shutdown()
         self.running = False
         self.loop.join(timeout=60)
@@ -269,7 +276,14 @@ class WidgetGallery(QDialog):
         while self.running:
             # update image
             img = self.cam.getImage()
-            cmap = self.ax.imshow(img, vmin=self.vmin, vmax=self.vmax)
+            if img[0] == 0:
+                self.running = False
+                break
+            elif img[0] == 1:
+                img = img[1]
+            else:
+                raise NotImplementedError("")
+            cmap = self.ax.imshow(img[::10,::10], vmin=self.vmin, vmax=self.vmax)
             #cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
             self.cbar.remove()
             self.cbar = self.figure.colorbar(cmap, ax=self.ax)
@@ -279,23 +293,23 @@ class WidgetGallery(QDialog):
             #plt.pause(0.1)
 
             # fetch camera metadata
-            #self.fps_out.setText(self.shm['fps'].get_data(check=True))
-            self.fps_out.setText(str(self.cam.get('fps')))
+            #self.exptime_out.setText(self.shm['exptime'].get_data(check=True))
+            self.exptime_out.setText(str(self.cam.get('exptime')))
             self.gain_out.setText(str(self.cam.get('gain')))
             self.temp_out.setText(str(self.cam.get('temp-det')))
-            self.roi_out.setText(str(self.cam.get('roi')))
+            self.roi_out.setText(str(self.cam.get_roi()))
             self.shutter_out.setText(str(self.cam.get('shutter_mode')))
             self.readout_mode_out.setText(str(self.cam.get('readout_mode')))
             #sleep(interval)
 
     def Apply(self):
         # change camera settings
-        if self.fps_in.isModified():
-            fps = self.fps_in.text()
+        if self.exptime_in.isModified():
+            exptime = self.exptime_in.text()
             try:
-                self.cam.set('fps', float(fps))#getDouble())
+                self.cam.set('exptime', float(exptime))#getDouble())
             except ValueError:
-                print(f"FPS is not a Float: {fps}")
+                print(f"exptime is not a Float: {exptime}")
         
         if self.temp_in.isModified():
             temp = self.temp_in.text()
@@ -311,14 +325,14 @@ class WidgetGallery(QDialog):
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
 
-        if self.gain_in.currentText() != self.gain:
-            self.cam.set('gain', self.gain.currentText())
+        #if self.gain_in.currentText() != self.gain:
+        self.cam.set('gain', self.gain_in.currentText())
 
-        if self.shutter_in.currentText() != self.shutter:
-            self.cam.set('shutter_mode', self.shutter_in.currentText())
+        #if self.shutter_in.currentText() != self.shutter:
+        self.cam.set('shutter_mode', self.shutter_in.currentText())
         
-        if self.readout_mode_in.currentText() != self.readout_mode:
-            self.cam.set('readout_mode', self.readout_mode_in.currentText())
+        #if self.readout_mode_in.currentText() != self.readout_mode:
+        self.cam.set_readout_mode(self.readout_mode_in.currentText())
     
     def apply_vmin(self, value):
         self.vmin = value
@@ -359,9 +373,13 @@ class WidgetGallery(QDialog):
     
     def auto_scale(self):
         print("set scale")
-        img = self.cam.getImage()[1]
-        self.vmin = np.mean(img)-3*np.std(img)
-        self.vmax = np.mean(img)+3*np.std(img)
+        img = self.cam.getImage()
+        if img[0] == 0:
+            pass
+        elif img[0] == 1:
+            img = img[1]
+            self.vmin = np.mean(img)-3*np.std(img)
+            self.vmax = np.mean(img)+3*np.std(img)
 
 if __name__ == '__main__':
     import sys
