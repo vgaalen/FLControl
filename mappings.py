@@ -29,6 +29,7 @@ class PI_CAMERA:
                           'gain': 'ADC Analog Gain',
                           'temp-set': 'Sensor Temperature Set Point',
                           'temp-det': 'Sensor Temperature Reading',
+                          'temp-status': 'Sensor Temperature Status',
                           'bit-depth': 'ADC Bit Depth'} # ['Sensor Temperature Status', 'Sensor Temperature Reading']
         
         self.readout_modes = self.cam.get_attribute('ADC Quality').values

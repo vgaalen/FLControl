@@ -9,12 +9,12 @@ from os.path import isfile
 #from cblue import *
 
 def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
-    height, width = cam.getImage()[1].shape
+    height, width = cam.getImage().shape
     temps = []
     #cam.setBadpx(False)
     #buffer = np.zeros((nframes, height, width), dtype=np.uint16)
     timeStart = datetime.now()
-    exptime = cam.getTint()
+    exptime = cam.get('exptime')
     print(exptime)
     # for i in range(nframes):
     #     # On CBlue no trigger is available, so we use timing
@@ -23,7 +23,8 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     #         progress_func(itt=i)
 
     #     buffer[i] = cam.getImage()
-    temps.append(cam.get('temp-det')[-1])
+    temps.append(cam.get('temp-det'))
+    temp_status = cam.get('temp-status')
     buffer = cam.getImages(nframes)[1]
     
     timeStop = datetime.now()
@@ -32,13 +33,16 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits"):#:%Y%m%d-%H%M%S
     hdr['TIME-OBS']= (f"{timeStart:%Y-%m-%d %H:%M}", "Starting Time of Observation (local time)")
     hdr['TIME-END']= (f"{timeStop:%Y-%m-%d %H:%M}", "End Time of Observation (local time)")
     hdr['TEMP-DET']= (f"{np.mean(temps)}", "Detector Temperature [C]") # Convert temperature to Kelvin
-    hdr['TEMP-SET']= (f"{cam.get('temp-set')+274.15}", "Cooling Setpoint [C]")
+    hdr['TEMP-SET']= (f"{cam.get('temp-set')}", "Cooling Setpoint [C]")
+    hdr['TEMP-STA']= (f"{temp_status}", "Cooling Status")
     #hdr['TEMP-MIN']= (f"{np.min(temps)+274.15}", "Minimum Temperature Reached in Kelvin")
     #hdr['TEMP-MAX']= (f"{np.max(temps)+274.15}", "Maximum Temperature Reached in Kelvin")
     hdr['FPS']= (f"{cam.get('fps')}", "Framerate in Hz")
     hdr['EXPTIME']= (f"{cam.get('exptime')}", "Exposure Time in Seconds")
     hdr['GAIN']= (f"{cam.get('gain')}", "Camera Gain Setting")
     hdr['ROI']= (f"{cam.get('roi')}", "Region of Interest Setting [status, x0, y0, width, height]")
+    hdr['SHUTTER']= (f"{cam.get('shutter_mode')}", "Shutter Mode")
+    hdr['RO_MODE']= (f"{cam.get('readout_mode')}", "Readout Mode")
     hdr['CAM_NAME']= (f"{cam.name}", "Camera Name")
     #hdr['BADPX_CR']= (f"{cam.getBadpx()}", "State of Bad Pixel Correction")
     #hdr['HDR']=f"{HDR}"
