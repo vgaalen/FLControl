@@ -19,6 +19,7 @@ class PI_CAMERA:
         self.cam_sn = input("Give the serial number of the desired camera\n")
 
         self.cam = PrincetonInstruments.PicamCamera(self.cam_sn)
+        self.name = self.cam.get_device_info()
 
         self.translate = {'fps': 'Frame Rate Calculation',
                           'exptime': 'Exposure Time',
@@ -162,6 +163,11 @@ class PI_CAMERA:
             return [1, np.zeros((5,5))]
         else:
             return [1, img]
+        
+    def bias(self):
+        min = self.cam.get_attribute(self.translate['exptime']).min
+        self.set('exptime', min)
+        return True
 
 def interface(func):
     def wrapper(*args, **kwargs):
