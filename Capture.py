@@ -32,22 +32,23 @@ def capture(cam, nframes, progress_func=None, file=f"test.fits", location=None, 
     hdr = fits.Header()
     hdr['TIME-OBS']= (f"{timeStart:%Y-%m-%d %H:%M}", "Starting Time of Observation (local time)")
     hdr['TIME-END']= (f"{timeStop:%Y-%m-%d %H:%M}", "End Time of Observation (local time)")
-    hdr['TEMP-DET']= (f"{np.mean(temps)}", "Detector Temperature [°C]") # Convert temperature to Kelvin
-    hdr['TEMP-SET']= (f"{cam.get('temp-set')}", "Cooling Setpoint [°C]")
+    hdr['TEMP-DET']= (f"{np.mean(temps)}", "Detector Temperature [C]") # Convert temperature to Kelvin
+    hdr['TEMP-SET']= (f"{cam.get('temp-set')}", "Cooling Setpoint [C]")
     hdr['TEMP-STA']= (f"{temp_status}", "Cooling Status")
     #hdr['TEMP-MIN']= (f"{np.min(temps)+274.15}", "Minimum Temperature Reached in Kelvin")
     #hdr['TEMP-MAX']= (f"{np.max(temps)+274.15}", "Maximum Temperature Reached in Kelvin")
     hdr['FPS']= (f"{cam.get('fps')}", "Framerate in Hz")
     hdr['EXPTIME']= (f"{cam.get('exptime')}", "Exposure Time in Seconds")
     hdr['GAIN']= (f"{cam.get('gain')}", "Camera Gain Setting")
-    hdr['ROI']= (f"{cam.get('roi')}", "Region of Interest Setting")
+    hdr['ROI']= (f"{cam.get_roi()}", "Region of Interest Setting")
     hdr['SHUTTER']= (f"{cam.get('shutter_mode')}", "Shutter Mode")
     hdr['RO_MODE']= (f"{cam.get('readout_mode')}", "Readout Mode")
     hdr['CAM_NAME']= (f"{cam.name}", "Camera Name")
     #hdr['BADPX_CR']= (f"{cam.getBadpx()}", "State of Bad Pixel Correction")
     #hdr['HDR']=f"{HDR}"
     hdr['LOCATION']= (f"{location}", "Location of Recording")
-    hdr['TEMP-AMB']= (f"{temp_amb}", "Ambient Temperature [°C]")
+    hdr['TEMP-AMB']= (f"{temp_amb}", "Ambient Temperature [C]")
+    hdr['INTERFACE']= (f"{cam.interface}", "Camera Interface")
     #hdr['COMMENT']=Note
     hdu = fits.PrimaryHDU(data=buffer,header=hdr)
     #f isfile(f"CblueOne_{datetime.now()}.fits"):
