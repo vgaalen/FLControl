@@ -17,7 +17,7 @@ plt.ion()
 # TODO: Put parameter setpoints in fill-in sections
 
 global DEMO
-DEMO = True
+DEMO = False#True
 
 if not DEMO:
     from Capture import capture
@@ -237,6 +237,8 @@ class WidgetGallery(QDialog):
         self.execute_status = QLabel(" ")
 
         layout = QGridLayout()
+        layout.addWidget(self.location_label, 0, 0)
+        layout.addWidget(self.location, 0, 1)
         layout.addWidget(self.temp_amb_label, 1, 0)
         layout.addWidget(self.temp_amb, 1, 1)
         layout.addWidget(self.nframes_label, 2, 0)
@@ -271,14 +273,16 @@ class WidgetGallery(QDialog):
     
     def Stop(self):
         self.running = False
-        self.loop.join(timeout=60)
+        if self.loop is not None:
+            self.loop.join(timeout=60)
         self.cam.Stop()
     
     def Shutdown(self):
         #self.Stop() # TODO: change for actual camera
         self.cam.Shutdown()
         self.running = False
-        self.loop.join(timeout=60)
+        if self.loop is not None:
+            self.loop.join(timeout=60)
         self.close()
     
     def Update(self, interval=0.1): 
@@ -305,7 +309,7 @@ class WidgetGallery(QDialog):
             #self.exptime_out.setText(self.shm['exptime'].get_data(check=True))
             self.exptime_out.setText(str(self.cam.get('exptime')))
             self.gain_out.setText(str(self.cam.get('gain')))
-            self.temp_out.setText(str(self.cam.get('temp-det')))
+            self.temp_out.setText(f"{self.cam.get('temp-det')}, {self.cam.get('temp-status')}")
             self.roi_out.setText(str(self.cam.get_roi()))
             self.shutter_out.setText(str(self.cam.get('shutter_mode')))
             self.readout_mode_out.setText(str(self.cam.get('readout_mode')))
@@ -353,20 +357,20 @@ class WidgetGallery(QDialog):
     
     def Capture(self): 
         self.capture_status.setText("Recording")
-        location = self.location.text()
+        location = str(self.location.text())
         temp_amb = float(self.temp_amb.text())
         nframes = int(self.nframes.text())
         file = self.filename.text()
         self.updateProgressBar(itt=0, range=nframes)
-        try:
-            res = capture(self.cam,nframes,self.updateProgressBar,file=file, location=location, temp_amb=temp_amb)
-            if res==1:
-                self.capture_status.setText("Complete")
-            else:
-                self.capture_status.setText("Failed")
-        except ValueError:
+        #try:
+        res = capture(self.cam,nframes,self.updateProgressBar,file=file, location=location, temp_amb=temp_amb)
+        if res==1:
+            self.capture_status.setText("Complete")
+        else:
             self.capture_status.setText("Failed")
-            print(f"Nframes has to be an integer: {nframes}")
+        # except ValueError:
+        #     self.capture_status.setText("Failed")
+        #     print(f"Nframes has to be an integer: {nframes}")
     
     def Execute(self):
         self.capture_status.setText("Recording")
@@ -396,5 +400,14 @@ if __name__ == '__main__':
     import sys
     app = QApplication(sys.argv)
     gallery = WidgetGallery()
+
+    import sys
+    def onError(exception_type, value, traceback):
+        gallery.cam.Shutdown()
+        gallery.close()
+        print(traceback.format_exc())
+        print(f"[{exception_type}]: {value}")
+    sys.excepthook = onError
+
     gallery.show()
     sys.exit(app.exec())
