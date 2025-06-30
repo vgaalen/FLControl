@@ -19,7 +19,9 @@ class PI_CAMERA:
         self.cam_sn = input("Give the serial number of the desired camera\n")
 
         self.cam = PrincetonInstruments.PicamCamera(self.cam_sn)
-        self.name = self.cam.get_device_info()
+        self.info = self.cam.get_device_info()
+        self.name = f"PI {self.info.model} - {self.info.serial_number}"
+        self.interface = self.info.interface
 
         self.translate = {'fps': 'Frame Rate Calculation',
                           'exptime': 'Exposure Time',
@@ -119,6 +121,7 @@ class PI_CAMERA:
             print(f"[Warning]: {mode} is not valid for parameter {self.translate['readout_mode']}. Options are {self.cam.get_attribute(self.translate['readout_mode']).values}")
     
     def Stop(self):
+        sleep(1)
         print(self.cam.acquisition_in_progress())
         if self.cam.acquisition_in_progress() == 1:
             self.cam.stop_acquisition()
@@ -127,19 +130,31 @@ class PI_CAMERA:
             pass
     
     def Start(self):
+        sleep(1)
         if self.cam.acquisition_in_progress() == 0:
             self.cam.start_acquisition()
+            sleep(1)
         else:
             pass
         print(self.cam.get_attribute(self.translate['gain']).values)
     
     def Shutdown(self):
-        # TODO: Change for actual camera
-        #self.Stop()
-        self.cam.close()
-        #self.set('Sensor Temperature Set Point', 20)
-        #while self.get('Sensor Temperature Reading')[-1]<15:
-        #    sleep(1)
+        while self.cam.is_opened():
+            if True:
+           # try:
+                # TODO: Change for actual camera
+                self.set('temp-set', 20.)
+                self.Start()
+                while np.abs(self.get('temp-set') - self.get('temp-det')) > 1:
+                    print(self.get('temp-det'))
+                    sleep(1)
+
+                self.Stop()
+                sleep(1)
+                self.cam.close()                
+                sleep(1)
+            # except:
+            #     pass
         return True
 
     def getImages(self, n) -> np.ndarray:
