@@ -17,7 +17,7 @@ plt.ion()
 # TODO: Put parameter setpoints in fill-in sections
 
 global DEMO
-DEMO = False#True
+DEMO = True
 
 if not DEMO:
     from Capture import capture
@@ -176,31 +176,31 @@ class WidgetGallery(QDialog):
 
         layout = QGridLayout()
         layout.addWidget(self.set_point_label, 0, 1)
-        layout.addWidget(self.cam_status_label, 0, 2)
+        layout.addWidget(self.cam_status_label, 0, 2, 1, 2)
         layout.addWidget(self.exptime_label, 1, 0)
         layout.addWidget(self.exptime_in, 1, 1)
-        layout.addWidget(self.exptime_out, 1, 2)
+        layout.addWidget(self.exptime_out, 1, 2, 1, 2)
         layout.addWidget(self.temp_label, 3, 0)
         layout.addWidget(self.temp_in, 3, 1)
-        layout.addWidget(self.temp_out, 3, 2)
+        layout.addWidget(self.temp_out, 3, 2, 1, 2)
         layout.addWidget(self.roi_label, 4, 0)
         layout.addWidget(self.roi_in, 4, 1)
-        layout.addWidget(self.roi_out, 4, 2)
+        layout.addWidget(self.roi_out, 4, 2, 1, 2)
         layout.addWidget(self.gain_label, 2, 0)
         layout.addWidget(self.gain_in, 2, 1)
-        layout.addWidget(self.gain_out, 2, 2)
+        layout.addWidget(self.gain_out, 2, 2, 1, 2)
         layout.addWidget(self.shutter_label, 5, 0)
         layout.addWidget(self.shutter_in, 5, 1)
-        layout.addWidget(self.shutter_out, 5, 2)
+        layout.addWidget(self.shutter_out, 5, 2, 1, 2)
         layout.addWidget(self.readout_mode_label, 6, 0)
         layout.addWidget(self.readout_mode_in, 6, 1)
-        layout.addWidget(self.readout_mode_out, 6, 2)
+        layout.addWidget(self.readout_mode_out, 6, 2, 1, 2)
         layout.addWidget(self.vmin_label, 7, 0)
         layout.addWidget(self.vmin_slider, 7, 1)
-        layout.addWidget(self.vmin_value, 7, 2)
+        layout.addWidget(self.vmin_value, 7, 2, 1, 2)
         layout.addWidget(self.vmax_label, 8, 0)
         layout.addWidget(self.vmax_slider, 8, 1)
-        layout.addWidget(self.vmax_value, 8, 2)
+        layout.addWidget(self.vmax_value, 8, 2, 1, 2)
         
         layout.addWidget(self.apply_button, 9, 1)
         layout.addWidget(self.start_button, 9, 0)
