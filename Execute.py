@@ -40,7 +40,8 @@ def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=Non
                 
                 print("Applying Camera Settings")
                 cam.set('temp-set', el.temp)
-                print(f'gain {el.gain}')
+                cam.set('readout_mode', el.mode)
+                cam.set('shutter_mode', el.shutter)
                 cam.set('gain', el.gain)
                 print('b')
                 cam.bias()
@@ -58,6 +59,8 @@ def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=Non
                     input("Dark Frame: Place the cover on the camara and press Enter.")
                     status = "covered"
                 cam.set('temp-set', el.temp)
+                cam.set('readout_mode', el.mode)
+                cam.set('shutter_mode', el.shutter)
                 cam.set('gain', el.gain)
                 cam.set('exptime', el.exptime)
                 #cam.set(el.fps)
@@ -74,6 +77,8 @@ def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=Non
                     input("Illuminate to level: ", el.level)
                     status = el.level
                 cam.set('temp', el.temp)
+                cam.set('readout_mode', el.mode)
+                cam.set('shutter_mode', el.shutter)
                 cam.set('gain', el.gain)
                 cam.set('exptime', el.exptime)
                 while cam.get('temp-status') != 'Locked':
