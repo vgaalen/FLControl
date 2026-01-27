@@ -44,10 +44,16 @@ class FLI_CAMERA:
         if isenabled:
             return True, [1,roi.col1, roi.row1, roi.col2-roi.col1 + 1, roi.row2-roi.row1 + 1]
         else:
-            return  True, [0,0,0,w,h]
+            return True, [0,0,0,w,h]
     
     @interface
     def setRoi(self, status, x0, y0, width, height) -> tuple[int, int, int, int]:
+        if type(self) == CRED:
+            if x0%32!=0 or y0%32!=0 or width%32!=0 or height%32!=0:
+                print("[Warning] CRED cameras only allow cropping in multiples of 32")
+                return 0
+        print("setting roi")
+
         state = FliSdk.CroppingData()
         state['col1'] = x0
         state['col2'] = x0 + width
@@ -55,6 +61,7 @@ class FLI_CAMERA:
         state['row2'] = y0 + height
         res = FliSdk.SetCroppingState(self.context, status, state)
         self._update_dims()
+        print(res)
         return res
     
     @interface
@@ -183,13 +190,12 @@ class CRED(FLI_CAMERA):
         self.setGain = cam_func(self, self.interface.SetConversionGain) 
         #self.getShutter = cam_func(self, FliSdk.FliCblueSfnc.GetSensorShutterMode)
         #self.setShutter = cam_func(self, FliSdk.FliCblueSfnc.SetSensorShutterMode)
-        self.setHdr = cam_func(self, self.interface.EnableHdr, convert=bool)
-        self.getHdr = cam_func(self, self.interface.GetHdrState)
+        #self.setHdr = cam_func(self, self.interface.EnableHdr, convert=bool)
+        #self.getHdr = cam_func(self, self.interface.GetHdrState)
         self.setBadpx = cam_func(self, self.interface.EnableBadPixel)
         self.getBadpx = cam_func(self, self.interface.GetBadPixelState)
         # TODO: Binning, reboot
 
-        self.HdrMap = {'True': 1, 'False': 0}
         self.ShutterMap = {'Not Supported': 0}
     
     def start(self):
@@ -200,10 +206,10 @@ class CRED(FLI_CAMERA):
     @interface
     def shutdown(self):
         self.Stop()
-        self.setTemp(20)
-        while self.getTemp()<15:
-            print(self.getTemp())
-            sleep(1)
+        # self.setTemp(20)
+        # while self.getTemp()<15:
+        #     print(self.getTemp())
+        #     sleep(1)
         return True
     
     @interface
@@ -215,18 +221,78 @@ class CRED(FLI_CAMERA):
         return res1*res2*res3*res4
         
     
-    def setRoi(self, status, x0, y0, w, h):
-        #res = self.interface.SetCropping
-        return [False]
-        #self.interface.SetRoi(self.context, status, x0, y0, w, h)
-    def getRoi(self):
-        return [False]
-        #self.interface.GetRoi(self.context)
+    #def setRoi(self, status, x0, y0, w, h):
+    #    #res = self.interface.SetCropping
+    #    return [False]
+    #    #self.interface.SetRoi(self.context, status, x0, y0, w, h)
+    #def getRoi(self):
+    #    #return [False]
+    #    self.interface.GetRoi(self.context)
     def getShutter(self):
         return [False]
         #raise NotImplementedError("")
     def setShutter(self):
         raise NotImplementedError("")
+    
+class CRED2(CRED):
+    def __init__(self, context, interface, name):
+        super().__init__(context, interface, name=name)
+        #self.HdrMap = {'True': 1, 'False': 0}
+        self.HdrMap = {'CDS': 0, 'HDR': 1, 'HDR Extended': 2, 'IMRO 2': 3, 'IMRO 5': 4, 'IMRO 10': 5}
+    
+    def getRaw(self):
+        return FliSdk.FliCredTwo.GetRawImagesState(self.context)
+
+    def getHdr(self):
+        IMRO = FliSdk.FliCredTwo.GetNbReadWoReset(self.context)
+        HDR = FliSdk.FliCredTwo.GetHdrState(self.context)
+        HDR_EXTENDED = FliSdk.FliCredTwo.GetHdrExtendedState(self.context)
+        return True, [HDR, HDR_EXTENDED, IMRO]
+    
+    def setHdr(self, mode):
+        print(mode)
+        if mode == 'CDS':
+            FliSdk.FliCredTwo.EnableHdr(self.context, False)
+            FliSdk.FliCredTwo.EnableHdrExtended(self.context, False)
+            FliSdk.FliCredTwo.SetNbReadWoReset(self.context, 1)
+            self.interface.EnableRawImages(self.context, True)
+            self.interface.EnableBadPixel(self.context, False)
+        elif mode == "HDR":
+            FliSdk.FliCredTwo.EnableHdr(self.context, True)
+            FliSdk.FliCredTwo.EnableHdrExtended(self.context, False)
+            FliSdk.FliCredTwo.SetNbReadWoReset(self.context, 1)
+            self.interface.EnableRawImages(self.context, False)
+            self.interface.EnableBadPixel(self.context, False)
+        elif mode == "HDR Extended":
+            FliSdk.FliCredTwo.EnableHdr(self.context, False)
+            FliSdk.FliCredTwo.EnableHdrExtended(self.context, True)
+            FliSdk.FliCredTwo.SetNbReadWoReset(self.context, 1)
+            self.interface.EnableRawImages(self.context, False)
+            self.interface.EnableBadPixel(self.context, False)
+        elif mode == "IMRO 2":
+            FliSdk.FliCredTwo.EnableHdr(self.context, False)
+            FliSdk.FliCredTwo.EnableHdrExtended(self.context, False)
+            FliSdk.FliCredTwo.SetNbReadWoReset(self.context, 2)
+            self.interface.EnableRawImages(self.context, False)
+            self.interface.EnableBadPixel(self.context, False)
+        elif mode == "IMRO 5":
+            FliSdk.FliCredTwo.EnableHdr(self.context, False)
+            FliSdk.FliCredTwo.EnableHdrExtended(self.context, False)
+            FliSdk.FliCredTwo.SetNbReadWoReset(self.context, 5)
+            self.interface.EnableRawImages(self.context, False)
+            self.interface.EnableBadPixel(self.context, False)
+        elif mode == "IMRO 10":
+            FliSdk.FliCredTwo.EnableHdr(self.context, False)
+            FliSdk.FliCredTwo.EnableHdrExtended(self.context, False)
+            FliSdk.FliCredTwo.SetNbReadWoReset(self.context, 10)
+            self.interface.EnableRawImages(self.context, False)
+            self.interface.EnableBadPixel(self.context, False)
+        else:
+            print(mode)
+            #raise NotImplementedError(f"{mode}")
+
+            
+
 
 # Seems like the is no reason to separate out Cred, CredOne, CredTwo, CredThree
 # class CRED2(CRED):
@@ -331,7 +397,7 @@ def Start():
     elif FliSdk.IsCredOne(context):
         return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
     elif FliSdk.IsCredTwo(context):
-        return CRED(context, FliSdk.FliCredTwo, cameras_list[camId])
+        return CRED2(context, FliSdk.FliCredTwo, cameras_list[camId])
     elif FliSdk.IsCredThree(context):
         return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
     elif FliSdk.IsCred(context):

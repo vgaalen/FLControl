@@ -17,7 +17,8 @@ plt.ion()
 # TODO: Put parameter setpoints in fill-in sections
 
 global DEMO
-DEMO = False#True
+DEMO = False
+#DEMO = True
 
 if not DEMO:
     from Capture import capture
@@ -264,12 +265,15 @@ class WidgetGallery(QDialog):
             self.cbar = self.figure.colorbar(cmap, ax=self.ax)
             self.mean_value.setText(str(np.mean(img)))
 
-            self.canvas.draw()
+            try:
+                self.canvas.draw()
+            except:
+                pass
             #plt.pause(0.1)
 
             # fetch camera metadata
             #self.fps_out.setText(self.shm['fps'].get_data(check=True))
-            self.fps_out.setText(str(self.cam.getFps()))
+            self.fps_out.setText(str(self.cam.getFps())+str(self.cam.getTint()))
             self.gain_out.setText(str(self.cam.getGain()))
             self.temp_out.setText(str(self.cam.getTemp()))
             self.roi_out.setText(str(self.cam.getRoi()))
@@ -299,16 +303,22 @@ class WidgetGallery(QDialog):
                 self.cam.setTemp(float(temp))
             except ValueError:
                 print(f"Temp is not a Float: {temp}")
+            except TypeError:
+                print(f"Temp is not a Float: {temp}")
         
         if self.roi_in.isModified():
             roi = np.fromstring(self.roi_in.text(),sep=',')
+            print(roi.dtype)
             try:
                 self.cam.setRoi(*roi)
             except ValueError:
                 print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
+            except TypeError:
+                print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
         
         if self.shutter_in.currentText() != self.shutter:
-            self.cam.setShutter(self.shutter_in.currentText())
+            #self.cam.setShutter(self.shutter_in.currentText())
+            self.cam.setHdr(self.shutter_in.currentText())
         
         if self.hdr_in.currentText() != self.hdr:
             self.cam.setHdr(self.hdr_in.currentText())
@@ -330,8 +340,11 @@ class WidgetGallery(QDialog):
             res = capture(self.cam,nframes,self.updateProgressBar,file=file)
             if res==1:
                 self.capture_status.setText("Complete")
+                print("Complete")
+                self.updateProgressBar(itt=nframes, range=nframes)
             else:
                 self.capture_status.setText("Failed")
+                print("Failed")
         except ValueError:
             self.capture_status.setText("Failed")
             print(f"Nframes has to be an integer: {nframes}")
