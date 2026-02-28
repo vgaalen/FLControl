@@ -11,26 +11,58 @@ import numpy as np
 import threading
 from time import sleep
 from datetime import datetime
+from typing import Optional, Literal
 
 plt.ion()
 
-# TODO: Put parameter setpoints in fill-in sections
+from Capture import capture
+from Execute import execute
+import mappings
+from fitting import gaussian
 
-global DEMO
-DEMO = False
-#DEMO = True
+class CtrlGroup:
+    # Set of QT elements to control and monitor a parameter
+    def __init__(self, label: str, grid: QGridLayout, row: int, type: Optional[Literal["LineEdit", "ComboBox"]]="LineEdit", options: Optional[list[str]]=None, default: Optional[str]="?"):
+        self.label = QLabel(label)
+        if type == "LineEdit":
+            self.input = QLineEdit("")
+        elif type == "ComboBox":
+            self.input = QComboBox()
+            self.input.addItems(options)
+        self.output = QLabel(default)
+        #self.label.setBuddy(self.input)
+        #self.label.setBuddy(self.output)
+        grid.addWidget(self.label, row, 0)
+        grid.addWidget(self.input, row, 1)
+        grid.addWidget(self.output, row, 2)
 
-if not DEMO:
-    from Capture import capture
-    from Execute import execute
-    import mappings
+class SliderGroup:
+    def __init__(self, label: str, slider_range: tuple, box, grid, row, default_value=0, function=None):
+        self.slider = QSlider(Qt.Orientation.Horizontal, box)
+        self.slider.setTickPosition(QSlider.TickPosition.TicksAbove)
+        self.slider.setRange(*slider_range)
+        self.slider.setValue(default_value)
+        if function is not None:
+            self.slider.valueChanged.connect(function)
+        self.label = QLabel(label)
+        self.label.setBuddy(self.slider)
+        self.output = QLabel(str(default_value))
 
+        grid.addWidget(self.label, row, 0)
+        grid.addWidget(self.slider, row, 1)
+        grid.addWidget(self.output, row, 2)
+
+class ButtonGroup:
+    def __init__(self, label, function, grid, location):
+        self.button = QPushButton(label)
+        self.button.setDefault(True)
+        self.button.clicked.connect(function)
+        grid.addWidget(self.button, *location)
 
 class WidgetGallery(QDialog):
     def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        if not DEMO:
-            self.cam = mappings.Start()
+        self.cam = mappings.Start()
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -48,17 +80,15 @@ class WidgetGallery(QDialog):
         mainLayout.setColumnStretch(0, 1)
         mainLayout.setColumnStretch(1, 1)
         self.setLayout(mainLayout)
-        if DEMO:
-            self.setWindowTitle("DEMO MODE: NOT CONNECTING TO CAMERA")
-        else:
-            self.setWindowTitle("FLControl - Live Viewer")
+        self.setWindowTitle("FLControl - Live Viewer")
 
-        if not DEMO:
-            print('a')
-            self.view = np.zeros((self.cam.height, self.cam.width))
-            self.context = self.cam.Start()
-            self.Start()
+        self.view = np.zeros((self.cam.height, self.cam.width))
+        self.context = self.cam.Start()
+        self.Start()
         self.frameCounter = 0
+        self.spot_x = 0
+        self.spot_y = 0
+        self.running = False
 
     def advanceProgressBar(self):
         curVal = self.progressBar.value()
@@ -94,145 +124,51 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.frame_label, 1, 2)
         layout.addWidget(self.frame_value, 1, 3)
         layout.addWidget(self.auto_scale_button, 1, 4)
-        # layout.addStretch(1)
+
+        self.target_position = CtrlGroup("Target Position 'x,y'", layout, 2, default="")
+        self.target_apply = ButtonGroup("Set", self.add_target, layout, (2,2,1,3))
+
+        self.spot_label = QLabel("Spot Position: ")
+        self.spot_position = QLabel("?, ?")
+        self.spot_delta = QLabel("")
+        layout.addWidget(self.spot_label, 3, 0)
+        layout.addWidget(self.spot_position, 3, 1)
+        layout.addWidget(self.spot_delta, 3, 2, 1, 3)
+
+        layout.setRowStretch(0, 1)
         self.ViewGroupBox.setLayout(layout)
 
     def createControlGroupBox(self):
         self.ControlGroupBox = QGroupBox("Control Panel")
 
-        # Settings Panel
-        self.set_point_label = QLabel("Set Point")
-        self.cam_status_label = QLabel("Status")
-        self.fps_in = QLineEdit("100")
-        self.fps_label = QLabel("&FPS:")
-        self.fps_label.setBuddy(self.fps_in)
-        self.fps_out = QLabel("?")
-        self.gain_in = QLineEdit("1")
-        self.gain_label = QLabel("&Gain:")
-        self.gain_label.setBuddy(self.gain_in)
-        self.gain_out = QLabel("?")
-        self.temp_in = QLineEdit("20")
-        self.temp_label = QLabel("&Temperature")
-        self.temp_label.setBuddy(self.temp_in)
-        self.temp_out = QLabel("?")
-        self.roi_in = QLineEdit("0,0,0,0,0")
-        self.roi_label = QLabel("&Region of Interest:")
-        self.roi_label.setBuddy(self.roi_in)
-        self.roi_out = QLabel("?")
-        self.shutter_in = QComboBox()
-        if DEMO:
-            self.shutter_in.addItems(['Global', 'Rolling'])
-        else:
-            self.shutter_in.addItems(list(self.cam.ShutterMap.keys()))
-        self.shutter_label = QLabel("&Shutter Mode:")
-        self.shutter_label.setBuddy(self.shutter_in)
-        self.shutter_out = QLabel("?")
-        self.shutter = self.shutter_in.currentText()
-
-        self.hdr_in = QComboBox()
-        if DEMO:
-            self.hdr_in.addItems(['On', 'Off'])
-        else:
-            self.shutter_in.addItems(list(self.cam.HdrMap.keys()))
-        self.hdr_label = QLabel("&HDR Mode:")
-        self.hdr_label.setBuddy(self.hdr_in)
-        self.hdr_out = QLabel("?")
-        self.hdr = self.hdr_in.currentText()
-
-        self.vmin_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
-        self.vmin_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
-        self.vmin_slider.setRange(0, 2 ** 16)
-        self.vmin_slider.setValue(0)
-        self.vmin_slider.valueChanged.connect(self.apply_vmin)
-        self.vmin_label = QLabel("&Vmin:")
-        self.vmin_label.setBuddy(self.vmin_slider)
-        self.vmin_value = QLabel("0")
-        self.vmax_slider = QSlider(Qt.Orientation.Horizontal, self.ControlGroupBox)
-        self.vmax_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
-        self.vmax_slider.setRange(0, 2 ** 16)
-        self.vmax_slider.setValue(100)
-        self.vmax_slider.valueChanged.connect(self.apply_vmax)
-        self.vmax_label = QLabel("&Vmax:")
-        self.vmax_label.setBuddy(self.vmax_slider)
-        self.vmax_value = QLabel("100")
-
-        self.apply_button = QPushButton("Apply")
-        self.apply_button.setDefault(True)
-        self.apply_button.clicked.connect(self.Apply)
-
-        self.start_button = QPushButton("Start")
-        self.start_button.setDefault(True)
-        self.start_button.clicked.connect(self.Start)
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setDefault(True)
-        self.stop_button.clicked.connect(self.Stop)
-        self.shutdown_button = QPushButton("Shutdown")
-        self.shutdown_button.setDefault(True)
-        self.shutdown_button.clicked.connect(self.Shutdown)
-
         layout = QGridLayout()
-        layout.addWidget(self.set_point_label, 0, 1)
-        layout.addWidget(self.cam_status_label, 0, 2)
-        layout.addWidget(self.fps_label, 1, 0)
-        layout.addWidget(self.fps_in, 1, 1)
-        layout.addWidget(self.fps_out, 1, 2)
-        layout.addWidget(self.gain_label, 2, 0)
-        layout.addWidget(self.gain_in, 2, 1)
-        layout.addWidget(self.gain_out, 2, 2)
-        layout.addWidget(self.temp_label, 3, 0)
-        layout.addWidget(self.temp_in, 3, 1)
-        layout.addWidget(self.temp_out, 3, 2)
-        layout.addWidget(self.roi_label, 4, 0)
-        layout.addWidget(self.roi_in, 4, 1)
-        layout.addWidget(self.roi_out, 4, 2)
-        layout.addWidget(self.shutter_label, 5, 0)
-        layout.addWidget(self.shutter_in, 5, 1)
-        layout.addWidget(self.shutter_out, 5, 2)
-        layout.addWidget(self.hdr_label, 6, 0)
-        layout.addWidget(self.hdr_in, 6, 1)
-        layout.addWidget(self.hdr_out, 6, 2)
-        layout.addWidget(self.vmin_label, 7, 0)
-        layout.addWidget(self.vmin_slider, 7, 1)
-        layout.addWidget(self.vmin_value, 7, 2)
-        layout.addWidget(self.vmax_label, 8, 0)
-        layout.addWidget(self.vmax_slider, 8, 1)
-        layout.addWidget(self.vmax_value, 8, 2)
+        self.temp = CtrlGroup("Sensor Temperature", layout, 0)
+        self.fps = CtrlGroup("FPS", layout, 1)
+        self.exptime = CtrlGroup("Exposure Time", layout, 2)
+        self.gain = CtrlGroup("Gain", layout, 3)
+        self.mode = CtrlGroup("Readout Mode", layout, 4, type="ComboBox", options=list(self.cam.Modes.keys()))
+        self.shutter = CtrlGroup("Shutter Mode", layout, 5, type="ComboBox", options=list(self.cam.Shutters.keys()))
+        self.roi = CtrlGroup("Region of Interest", layout, 6)
 
-        layout.addWidget(self.apply_button, 9, 1)
-        layout.addWidget(self.start_button, 9, 0)
-        layout.addWidget(self.stop_button, 9, 2)
-        layout.addWidget(self.shutdown_button, 9, 3)
+        self.vmin_slider = SliderGroup("vmin", (0,20000),self.ControlGroupBox,layout,7,0,self.apply_vmin)
+        self.vmax_slider = SliderGroup("vmax", (0,20000), self.ControlGroupBox, layout, 8, 10000, self.apply_vmax)
+
+        self.apply_button = ButtonGroup("Apply", self.Apply, layout, (9,1))
+        self.start_button = ButtonGroup("Start", self.Start, layout, (9,0))
+        self.stop_button = ButtonGroup("Stop", self.Stop, layout, (9,2))
+        self.shutdown_button = ButtonGroup("Shutdown", self.Shutdown, layout, (9,3))
 
         self.ControlGroupBox.setLayout(layout)
 
     def createCaptureControlGroupBox(self):
         self.CaptureGroupBox = QGroupBox("Control Panel")
-
-        self.nframes = QLineEdit()
-        self.nframes_label = QLabel("&# of Frames")
-        self.nframes_label.setBuddy(self.nframes)
-        self.filename = QLineEdit(f"{datetime.now():%Y%m%d-%H%M%S}.fits")
-        self.filename_label = QLabel("&Write to File")
-        self.filename_label.setBuddy(self.filename)
-
-        self.capture_button = QPushButton("Capture")
-        self.capture_button.setDefault(True)
-        self.capture_button.clicked.connect(self.Capture)
-        self.capture_status = QLabel(" ")
-
-        self.execute_button = QPushButton("Execute Runplan")
-        self.execute_button.setDefault(True)
-        self.execute_button.clicked.connect(self.Execute)
-        self.execute_status = QLabel(" ")
-
         layout = QGridLayout()
-        layout.addWidget(self.nframes_label, 1, 0)
-        layout.addWidget(self.nframes, 1, 1)
-        layout.addWidget(self.filename_label, 2, 0)
-        layout.addWidget(self.filename, 2, 1)
+        self.nframes = CtrlGroup("# of Frames", layout, 1)
+        self.filename = CtrlGroup("Write to File", layout, 2, default=f"{datetime.now():%Y%m%d-%H%M%S}.fits")
+        self.capture_button = ButtonGroup("Capture", self.Capture, layout, (3,1))
+        self.execute_button = ButtonGroup("Execute", self.Execute, layout, (3,0))
+        self.capture_status = QLabel(" ")
         layout.addWidget(self.capture_status, 3, 2)
-        layout.addWidget(self.capture_button, 3, 1)
-        layout.addWidget(self.execute_button, 3, 0)
         self.CaptureGroupBox.setLayout(layout)
 
     def createProgressBar(self):
@@ -267,7 +203,7 @@ class WidgetGallery(QDialog):
         while self.running:
             # update image
             try:
-                self.view = self.cam.getImage()[1]
+                self.view = self.cam.getImage()
                 self.frameCounter += 1
             except:
                 pass
@@ -285,69 +221,46 @@ class WidgetGallery(QDialog):
             # plt.pause(0.1)
 
             # fetch camera metadata
-            # self.fps_out.setText(self.shm['fps'].get_data(check=True))
-            self.fps_out.setText(str(self.cam.getFps()) + str(self.cam.getTint()))
-            self.gain_out.setText(str(self.cam.getGain()))
-            self.temp_out.setText(str(self.cam.getTemp()))
-            self.roi_out.setText(str(self.cam.getRoi()))
-            self.shutter_out.setText(str(self.cam.getShutter()))
-            self.hdr_out.setText(str(self.cam.getHdr()))
+            self.fps.output.setText(str(self.cam.getFps()))
+            self.exptime.output.setText(str(self.cam.getTint()))
+            self.gain.output.setText(str(self.cam.getGain()))
+            self.temp.output.setText(str(self.cam.getTemp()))
+            self.roi.output.setText(str(self.cam.getRoi()))
+            self.shutter.output.setText(str(self.cam.getShutter()))
+            self.mode.output.setText(str(self.cam.getHdr()))
             # sleep(interval)
+
+            # find the spot
+            self.spot_x, self.spot_y = gaussian(self.view)
+            self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+            try:
+                self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+            except AttributeError:
+                pass
 
     def Apply(self):
         # change camera settings
-        if self.fps_in.isModified():
-            fps = self.fps_in.text()
-            try:
-                self.cam.setFps(float(fps))  # getDouble())
-            except ValueError:
-                print(f"FPS is not a Float: {fps}")
-
-        if self.gain_in.isModified():
-            gain = self.gain_in.text()
-            try:
-                self.cam.setGain(gain)
-            except ValueError:
-                print(f"Gain is not a Float: {gain}")
-
-        if self.temp_in.isModified():
-            temp = self.temp_in.text()
-            try:
-                self.cam.setTemp(float(temp))
-            except ValueError:
-                print(f"Temp is not a Float: {temp}")
-            except TypeError:
-                print(f"Temp is not a Float: {temp}")
-
-        if self.roi_in.isModified():
-            roi = np.fromstring(self.roi_in.text(), sep=',')
-            print(roi.dtype)
-            try:
-                self.cam.setRoi(*roi)
-            except ValueError:
-                print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
-            except TypeError:
-                print(f"Region of Interest not in proper format [toggle on/off, x0, y0, width, height]: {roi}")
-
-        if self.shutter_in.currentText() != self.shutter:
-            # self.cam.setShutter(self.shutter_in.currentText())
-            self.cam.setHdr(self.shutter_in.currentText())
-
-        if self.hdr_in.currentText() != self.hdr:
-            self.cam.setHdr(self.hdr_in.currentText())
+        for setting,func in zip([self.temp, self.fps, self.exptime, self.gain, self.roi, self.shutter, self.mode],
+                                [self.cam.setTemp, self.cam.setFps, self.cam.setExptime, self.cam.setGain, self.cam.setRoi, self.cam.setShutter, self.cam.setMode]):
+            if setting.input.isModified():
+                value = setting.input.text()
+                try:
+                    func(value)
+                except ValueError:
+                    print(f"[Warning] Unable to update {setting.label}")
 
     def apply_vmin(self, value):
         self.vmin = value
-        self.vmin_value.setText(f"{value}")
+        self.vmin_slider.output.setText(f"{value}")
 
     def apply_vmax(self, value):
         self.vmax = value
-        self.vmax_value.setText(f"{value}")
+        self.vmax_slider.output.setText(f"{value}")
 
     def Capture(self):
         self.capture_status.setText("Recording")
-        nframes = int(self.nframes.text())
-        file = self.filename.text()
+        nframes = int(self.nframes.input.text())
+        file = self.filename.input.text()
         self.updateProgressBar(itt=0, range=nframes)
         try:
             res = capture(self.cam, nframes, self.updateProgressBar, file=file)
@@ -367,14 +280,10 @@ class WidgetGallery(QDialog):
         self.updateProgressBar(itt=0)
         try:
             # res = execute(self.cam)
-            self.ExecThread = threading.Thread(target=execute, args=[self.cam],
+            thread = threading.Thread(target=execute, args=[self.cam],
                                                kwargs={'progress_func': self.updateProgressBar,
                                                        'exit_status_func': self.capture_status.setText})
-            self.ExecThread.start()
-            # if res==1:
-            #    self.capture_status.setText("Complete")
-            # else:
-            #    self.capture_status.setText("Failed")
+            thread.start()
         except ValueError:
             self.capture_status.setText("Failed")
 
@@ -383,6 +292,19 @@ class WidgetGallery(QDialog):
         img = self.cam.getImage()[1]
         self.vmin = np.mean(img) - 3 * np.std(img)
         self.vmax = np.mean(img) + 3 * np.std(img)
+
+    def add_target(self):
+        self.pos_x, self.pos_y = self.target_position.input.text().split(',')
+        self.pos_x, self.pos_y = float(self.pos_x), float(self.pos_y)
+        #pos_x = 50
+        #pos_y = 50
+        size = 0.05
+        self.ax.plot([self.pos_x, self.pos_x], [self.pos_y-size*self.cam.height, self.pos_y+size*self.cam.height], color='red')
+        self.ax.plot([self.pos_x-size*self.cam.width, self.pos_x+size*self.cam.width], [self.pos_y, self.pos_y], color='red')
+        try:
+            self.canvas.draw()
+        except:
+            pass
 
 
 if __name__ == '__main__':

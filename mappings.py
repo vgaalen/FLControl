@@ -1,7 +1,5 @@
-#import sdk.FliSdk_V2 as FliSdk
 import numpy as np
 from time import sleep
-import ctypes
 
 def interface(func):
     def wrapper(*args, **kwargs):
@@ -16,9 +14,47 @@ def interface(func):
             return False, None
     return wrapper
 
+def start_fli_cam():
+    import sdk.FliSdk_V2 as FliSdk
+    import ctypes
+    context = FliSdk.Init()
+    # call before DetectCameras or it fails for some reason ...
+    grabbers_list = FliSdk.DetectGrabbers(context)
+    for s in grabbers_list:
+        print('- ' + s)
+    cameras_list = FliSdk.DetectCameras(context)
+    print(f"{len(cameras_list)} cameras detected")
+    print("Select the camera")
+    for k in range(len(cameras_list)):
+        print(f"{k} : {cameras_list[k]}")
+    print("select camera #:")
+    cam_id = int(input())
+    print(f"camera {cam_id} selected: {cameras_list[cam_id]}")
 
-class FLI_CAMERA:
+    # if camera is available
+    if cameras_list[0] != 'Usb#' and len(cameras_list) >= 1:
+        res = FliSdk.SetCamera(context, cameras_list[cam_id])
+        FliSdk.Update(context)
+    else:
+        raise ConnectionError("No camera found...")
+
+    if FliSdk.IsCblueOne(context):
+        return Cblue(context, cameras_list[cam_id])
+    elif FliSdk.IsCredOne(context):
+        return Cred(context, FliSdk.FliCredOne, cameras_list[cam_id])
+    elif FliSdk.IsCredTwo(context):
+        return Cred2(context, FliSdk.FliCredTwo, cameras_list[cam_id])
+    elif FliSdk.IsCredThree(context):
+        return Cred(context, FliSdk.FliCredThree, cameras_list[cam_id])
+    elif FliSdk.IsCred(context):
+        return Cred(context, FliSdk.FliCred, cameras_list[cam_id])
+    else:
+        raise NotImplementedError("")
+
+class FliCamera:
     def __init__(self, context, name="UNKNOWN"):
+        import sdk.FliSdk_V2 as FliSdk
+        import ctypes
         self.name = name
         self.context = context
         self._update_dims()
@@ -48,7 +84,7 @@ class FLI_CAMERA:
     
     @interface
     def setRoi(self, status, x0, y0, width, height) -> tuple[int, int, int, int]:
-        if type(self) == CRED:
+        if type(self) == Cred:
             if x0%32!=0 or y0%32!=0 or width%32!=0 or height%32!=0:
                 print("[Warning] CRED cameras only allow cropping in multiples of 32")
                 return 0
@@ -86,10 +122,10 @@ class FLI_CAMERA:
         pointer = FliSdk.GetRawImage(self.context, -1)
         pa = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
         img = np.frombuffer(pa.contents, dtype=np.uint16).reshape((self.height,self.width))
-        return True, img
+        return img
     
 
-class CBLUE(FLI_CAMERA):
+class Cblue(FliCamera):
     def __init__(self, context, name):
         super().__init__(context, name=name)
         self.getTint = cam_func(self, FliSdk.FliCblueSfnc.GetExposureTime)
@@ -104,8 +140,8 @@ class CBLUE(FLI_CAMERA):
 
         FliSdk.FliCblueOne.SetDeviceTemperatureSelector(self.context, 0) # set temperature location to sensor
 
-        self.ShutterMap = {'Global': 0, 'Rolling': 1, 'GlobalReset': 2}
-        self.HdrMap = {'Mono8': 0, 'Mono10': 1, 'Mono12': 2}
+        self.Shutters = {'Global': 0, 'Rolling': 1, 'GlobalReset': 2}
+        self.Modes = {'Mono8': 0, 'Mono10': 1, 'Mono12': 2}
 
         # TODO: Binning, reboot
         # TODO: Get Temperature Setpoint
@@ -177,7 +213,7 @@ class CBLUE(FLI_CAMERA):
         return False
 
 
-class CRED(FLI_CAMERA):
+class Cred(FliCamera):
     def __init__(self, context, interface, name):
         super().__init__(context, name=name)
         self.interface = interface
@@ -196,7 +232,8 @@ class CRED(FLI_CAMERA):
         self.getBadpx = cam_func(self, self.interface.GetBadPixelState)
         # TODO: Binning, reboot
 
-        self.ShutterMap = {'Not Supported': 0}
+        self.Shutters = {'Not Supported': 0}
+        self.Modes = {'N/A': 0}
     
     def start(self):
         self.interface.EnableRawImages(self.context, True)
@@ -234,11 +271,10 @@ class CRED(FLI_CAMERA):
     def setShutter(self):
         raise NotImplementedError("")
     
-class CRED2(CRED):
+class Cred2(Cred):
     def __init__(self, context, interface, name):
         super().__init__(context, interface, name=name)
-        #self.HdrMap = {'True': 1, 'False': 0}
-        self.HdrMap = {'CDS': 0, 'HDR': 1, 'HDR Extended': 2, 'IMRO 2': 3, 'IMRO 5': 4, 'IMRO 10': 5}
+        self.Modes = {'CDS': 0, 'HDR': 1, 'HDR Extended': 2, 'IMRO 2': 3, 'IMRO 5': 4, 'IMRO 10': 5}
     
     def getRaw(self):
         return FliSdk.FliCredTwo.GetRawImagesState(self.context)
@@ -311,7 +347,7 @@ class cam_func:
                 state = res
         return res
 
-class DAO_CAM:
+class DaoCam:
     def __init__(self, name="dao"):
         import dao
         
@@ -358,13 +394,13 @@ class dao_func:
     def set(self, data):
         return self.shm.set_data(data)
 
-class QHY_CAM:
+class QhyCam:
     def __init__(self):
         from qhyccd import qhyccd
         self.cam = qhyccd.qhyccd()
 
-        self.ShutterMap = {'N/A': 0}
-        self.HdrMap = {'N/A': 0}
+        self.Shutters = {'N/A': 0}
+        self.Modes = {'N/A': 0}
 
         self.width, self.height = 0,0
 
@@ -436,7 +472,7 @@ class QHY_CAM:
         print("[Warning] Changing the shutter mode is not supported")
         return False
 
-class Allied_CAM:
+class AlliedCam:
     def __init__(self):
         import vmbpy
         vmb = vmbpy.VmbSystem.get_instance()
@@ -446,8 +482,8 @@ class Allied_CAM:
                 print(cam)
             self.cam = cams[0]
 
-        self.ShutterMap = {'N/A': 0}
-        self.HdrMap = {'N/A': 0}
+        self.Shutters = {'N/A': 0}
+        self.Modes = {'N/A': 0}
 
         self.width, self.height = 0,0
 
@@ -493,11 +529,12 @@ class Allied_CAM:
     def setShutter(self, shutter):
         pass
 
-class CAM_TEMPLATE:
+class CamTemplate:
     # For reference when adding new cameras
     def __init__(self):
-        self.ShutterMap = {'N/A': 0}
-        self.HdrMap = {'N/A': 0}
+        self.Shutters = {'N/A': 0}
+        self.Modes = {'N/A': 0}
+        self.width, self.height = 0, 0
     def Start(self):
         pass
     def Stop(self):
@@ -533,38 +570,78 @@ class CAM_TEMPLATE:
     def setShutter(self, shutter):
         pass
 
-def Start():
-    return QHY_CAM()
+class DemoCam:
+    def __init__(self):
+        self.Shutters = {'N/A': 0}
+        self.Modes = {'N/A': 0}
+        self.width, self.height = 100, 100
 
-    # Todo: move this into the FLI class
-    # context = FliSdk.Init()
-    # # call before DetectCameras or it fails for some reason ...
-    # grabbers_list = FliSdk.DetectGrabbers(context)
-    # for s in grabbers_list:
-    #     print('- '+s)
-    # cameras_list = FliSdk.DetectCameras(context)
-    # print(f"{len(cameras_list)} cameras detected")
-    # print("Select the camera")
-    # for k in range(len(cameras_list)):
-    #     print(f"{k} : {cameras_list[k]}")
-    # print("select camera #:")
-    # camId = int(input())
-    # print(f"camera {camId} selected: {cameras_list[camId]}")
-    #
-    # # if camera is available
-    # if cameras_list[0]!='Usb#' and len(cameras_list)>=1:
-    #     res = FliSdk.SetCamera(context, cameras_list[camId])
-    #     FliSdk.Update(context)
-    # else:
-    #     raise ConnectionError("No camera found...")
-    #
-    # if FliSdk.IsCblueOne(context):
-    #     return CBLUE(context, cameras_list[camId])
-    # elif FliSdk.IsCredOne(context):
-    #     return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
-    # elif FliSdk.IsCredTwo(context):
-    #     return CRED2(context, FliSdk.FliCredTwo, cameras_list[camId])
-    # elif FliSdk.IsCredThree(context):
-    #     return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
-    # elif FliSdk.IsCred(context):
-    #     return CRED(context, FliSdk.FliCred, cameras_list[camId])
+    def Start(self):
+        pass
+
+    def Stop(self):
+        pass
+
+    def shutdown(self):
+        pass
+
+    def getImage(self):
+        return np.zeros((self.height, self.width))
+
+    def getFps(self):
+        return "DEMO"
+
+    def getTint(self):
+        return "DEMO"
+
+    def getGain(self):
+        return "DEMO"
+
+    def getTemp(self):
+        return "DEMO"
+
+    def getRoi(self):
+        return "DEMO"
+
+    def getShutter(self):
+        return "DEMO"
+
+    def getHdr(self):
+        return "DEMO"
+
+    def setFps(self, fps):
+        print(f"Setting fps to {float(fps)}")
+        return True
+
+    def setGain(self, gain):
+        return True
+
+    def setTemp(self, temp):
+        return True
+
+    def setRoi(self, roi):
+        return True
+
+    def setHdr(self, hdr_mode):
+        return True
+
+    def setShutter(self, shutter):
+        return True
+
+def Start():
+    res = int(input("""Choose the camera type: 
+    1: Demo
+    2: First Light Imaging
+    3: QHYCCD
+    4: Allied Vision
+    """))
+    if res == 1:
+        return DemoCam()
+    elif res == 2:
+        return start_fli_cam()
+    elif res == 3:
+        return QhyCam()
+    elif res == 4:
+        return AlliedCam()
+    else:
+        raise Exception("Invalid input")
