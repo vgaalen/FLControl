@@ -1,4 +1,4 @@
-import sdk.FliSdk_V2 as FliSdk
+#import sdk.FliSdk_V2 as FliSdk
 import numpy as np
 from time import sleep
 import ctypes
@@ -291,14 +291,25 @@ class CRED2(CRED):
             print(mode)
             #raise NotImplementedError(f"{mode}")
 
-            
+class cam_func:
+    def __init__(self, cam, func, convert=False):
+        self.func = func
+        self.cam = cam
+        self.convert = convert
 
-
-# Seems like the is no reason to separate out Cred, CredOne, CredTwo, CredThree
-# class CRED2(CRED):
-#     def __init__(self, context)
-#         interface = FliSdk.FliCredTwo
-#         super().__init__(context, interface)
+    @interface
+    def __call__(self, *args, **kwargs):
+        state = False
+        while not state:
+            if self.convert is not False:
+                res = self.func(self.cam.context, *[self.convert(x) for x in args], **kwargs)
+            else:
+                res = self.func(self.cam.context, *args, **kwargs)
+            if type(res) == list or type(res) == tuple:
+                state = res[0]
+            else:
+                state = res
+        return res
 
 class DAO_CAM:
     def __init__(self, name="dao"):
@@ -337,28 +348,6 @@ class DAO_CAM:
     def shutdown(self):
         raise NotImplementedError
 
-
-class cam_func:
-    def __init__(self, cam, func, convert=False):
-        self.func = func
-        self.cam = cam
-        self.convert = convert
-    
-    @interface
-    def __call__(self, *args, **kwargs):
-        state = False
-        while not state:
-            if self.convert is not False:
-                res = self.func(self.cam.context, *[self.convert(x) for x in args], **kwargs)
-            else:
-                res = self.func(self.cam.context, *args, **kwargs)
-            if type(res) == list or type(res) == tuple:
-                state = res[0]
-            else:
-                state = res
-        return res
-
-
 class dao_func:
     def __init__(self, shm):
         self.shm
@@ -369,36 +358,213 @@ class dao_func:
     def set(self, data):
         return self.shm.set_data(data)
 
+class QHY_CAM:
+    def __init__(self):
+        from qhyccd import qhyccd
+        self.cam = qhyccd.qhyccd()
+
+        self.ShutterMap = {'N/A': 0}
+        self.HdrMap = {'N/A': 0}
+
+        self.width, self.height = 0,0
+
+    def Start(self):
+        try:
+            self.cam.BeginLive()
+            return True
+        except:
+            print("[Warning] Failed to start live mode")
+            return False
+
+    def Stop(self):
+        try:
+            self.cam.StopLive()
+            return True
+        except:
+            print("[Warning] Failed to stor live mode")
+            return False
+
+    def shutdown(self):
+        self.cam.StopLive()
+        sleep(1)
+        self.cam.close()
+
+    def getImage(self):
+        return self.cam.getImage()
+
+    def getFps(self):
+        return 1/(0.001*self.cam.exposureMS)
+
+    def getTint(self):
+        return self.cam.exposureMS
+
+    def getGain(self):
+        return "?"
+
+    def getTemp(self):
+        return "?"
+
+    def getRoi(self):
+        return "?"
+
+    def getShutter(self):
+        return "?"
+
+    def getHdr(self):
+        return "?"
+
+    def setFps(self, fps):
+        self.cam.SetExposure(1000*1/fps)
+
+    def setGain(self, gain):
+        print("[Warning] Changing the gain is not supported")
+        return False
+
+    def setTemp(self, temp):
+        print("[Warning] Changing the temperature is not supported")
+        return False
+
+    def setRoi(self, roi):
+        print("[Warning] Changing the Region of Interest is not supported")
+        return False
+
+    def setHdr(self, hdr_mode):
+        print("[Warning] Changing the HDR-mode is not supported")
+        return False
+
+    def setShutter(self, shutter):
+        print("[Warning] Changing the shutter mode is not supported")
+        return False
+
+class Allied_CAM:
+    def __init__(self):
+        import vmbpy
+        vmb = vmbpy.VmbSystem.get_instance()
+        with vmb:
+            cams = vmb.get_all_cameras()
+            for cam in cams:
+                print(cam)
+            self.cam = cams[0]
+
+        self.ShutterMap = {'N/A': 0}
+        self.HdrMap = {'N/A': 0}
+
+        self.width, self.height = 0,0
+
+    def Start(self):
+        self.cam.start_streaming()
+
+    def Stop(self):
+        self.cam.stop_streaming()
+
+    def shutdown(self):
+        pass
+
+    def getImage(self):
+        if self.cam.is_streaming():
+            return self.cam.queue_frame()
+        else:
+            return self.cam.get_frame()
+
+    def getFps(self):
+        pass
+    def getTint(self):
+        pass
+    def getGain(self):
+        pass
+    def getTemp(self):
+        pass
+    def getRoi(self):
+        pass
+    def getShutter(self):
+        pass
+    def getHdr(self):
+        pass
+    def setFps(self, fps):
+        pass
+    def setGain(self, gain):
+        pass
+    def setTemp(self, temp):
+        pass
+    def setRoi(self, roi):
+        pass
+    def setHdr(self, hdr_mode):
+        pass
+    def setShutter(self, shutter):
+        pass
+
+class CAM_TEMPLATE:
+    # For reference when adding new cameras
+    def __init__(self):
+        self.ShutterMap = {'N/A': 0}
+        self.HdrMap = {'N/A': 0}
+    def Start(self):
+        pass
+    def Stop(self):
+        pass
+    def shutdown(self):
+        pass
+    def getImage(self):
+        pass
+    def getFps(self):
+        pass
+    def getTint(self):
+        pass
+    def getGain(self):
+        pass
+    def getTemp(self):
+        pass
+    def getRoi(self):
+        pass
+    def getShutter(self):
+        pass
+    def getHdr(self):
+        pass
+    def setFps(self, fps):
+        pass
+    def setGain(self, gain):
+        pass
+    def setTemp(self, temp):
+        pass
+    def setRoi(self, roi):
+        pass
+    def setHdr(self, hdr_mode):
+        pass
+    def setShutter(self, shutter):
+        pass
 
 def Start():
-    context = FliSdk.Init()
-    # call before DetectCameras or it fails for some reason ...
-    grabbers_list = FliSdk.DetectGrabbers(context)
-    for s in grabbers_list:
-        print('- '+s)
-    cameras_list = FliSdk.DetectCameras(context)
-    print(f"{len(cameras_list)} cameras detected")
-    print("Select the camera")
-    for k in range(len(cameras_list)):
-        print(f"{k} : {cameras_list[k]}")
-    print("select camera #:")
-    camId = int(input())
-    print(f"camera {camId} selected: {cameras_list[camId]}")
+    return QHY_CAM()
 
-    # if camera is available
-    if cameras_list[0]!='Usb#' and len(cameras_list)>=1:
-        res = FliSdk.SetCamera(context, cameras_list[camId])
-        FliSdk.Update(context)
-    else:
-        raise ConnectionError("No camera found...")
-    
-    if FliSdk.IsCblueOne(context):
-        return CBLUE(context, cameras_list[camId])
-    elif FliSdk.IsCredOne(context):
-        return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
-    elif FliSdk.IsCredTwo(context):
-        return CRED2(context, FliSdk.FliCredTwo, cameras_list[camId])
-    elif FliSdk.IsCredThree(context):
-        return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
-    elif FliSdk.IsCred(context):
-        return CRED(context, FliSdk.FliCred, cameras_list[camId])
+    # Todo: move this into the FLI class
+    # context = FliSdk.Init()
+    # # call before DetectCameras or it fails for some reason ...
+    # grabbers_list = FliSdk.DetectGrabbers(context)
+    # for s in grabbers_list:
+    #     print('- '+s)
+    # cameras_list = FliSdk.DetectCameras(context)
+    # print(f"{len(cameras_list)} cameras detected")
+    # print("Select the camera")
+    # for k in range(len(cameras_list)):
+    #     print(f"{k} : {cameras_list[k]}")
+    # print("select camera #:")
+    # camId = int(input())
+    # print(f"camera {camId} selected: {cameras_list[camId]}")
+    #
+    # # if camera is available
+    # if cameras_list[0]!='Usb#' and len(cameras_list)>=1:
+    #     res = FliSdk.SetCamera(context, cameras_list[camId])
+    #     FliSdk.Update(context)
+    # else:
+    #     raise ConnectionError("No camera found...")
+    #
+    # if FliSdk.IsCblueOne(context):
+    #     return CBLUE(context, cameras_list[camId])
+    # elif FliSdk.IsCredOne(context):
+    #     return CRED(context, FliSdk.FliCredOne, cameras_list[camId])
+    # elif FliSdk.IsCredTwo(context):
+    #     return CRED2(context, FliSdk.FliCredTwo, cameras_list[camId])
+    # elif FliSdk.IsCredThree(context):
+    #     return CRED(context, FliSdk.FliCredThree, cameras_list[camId])
+    # elif FliSdk.IsCred(context):
+    #     return CRED(context, FliSdk.FliCred, cameras_list[camId])
