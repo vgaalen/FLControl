@@ -17,8 +17,10 @@ plt.ion()
 
 from Capture import capture
 from Execute import execute
-import mappings
+import cameras
 from fitting import gaussian
+
+import pyqtgraph as pg
 
 class CtrlGroup:
     # Set of QT elements to control and monitor a parameter
@@ -62,7 +64,12 @@ class ButtonGroup:
 class WidgetGallery(QDialog):
     def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        self.cam = mappings.Start()
+        self.cam = cameras.Start()
+
+        self.view = np.zeros((self.cam.height, self.cam.width))
+        self.frameCounter = 0
+        self.spot_x = 0
+        self.spot_y = 0
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -82,12 +89,7 @@ class WidgetGallery(QDialog):
         self.setLayout(mainLayout)
         self.setWindowTitle("FLControl - Live Viewer")
 
-        self.view = np.zeros((self.cam.height, self.cam.width))
-        self.context = self.cam.Start()
         self.Start()
-        self.frameCounter = 0
-        self.spot_x = 0
-        self.spot_y = 0
         self.running = False
 
     def advanceProgressBar(self):
@@ -98,14 +100,17 @@ class WidgetGallery(QDialog):
     def createViewGroupBox(self):
         self.ViewGroupBox = QGroupBox("Live Viewer")
 
-        self.figure = Figure(figsize=(5, 3))
-        self.canvas = FigureCanvas(self.figure)
-        self.ax = self.figure.subplots()
-        self.vmin = 0
-        self.vmax = 100
-        cmap = self.ax.imshow(np.zeros((100, 100)), vmin=self.vmin, vmax=self.vmax)
-        self.cbar = self.figure.colorbar(cmap, ax=self.ax)
-        # self.figure.show(block=False)
+        # self.figure = Figure(figsize=(5, 3))
+        # self.canvas = FigureCanvas(self.figure)
+        # self.ax = self.figure.subplots()
+        # self.vmin = 0
+        # self.vmax = 100
+        # cmap = self.ax.imshow(np.zeros((100, 100)), vmin=self.vmin, vmax=self.vmax)
+        # self.cbar = self.figure.colorbar(cmap, ax=self.ax)
+        # # self.figure.show(block=False)
+
+        self.canvas = pg.ImageView()
+        self.canvas.setImage(self.view)
 
         self.mean_label = QLabel("Mean Pixel Value")
         self.mean_value = QLabel("?")
@@ -190,6 +195,7 @@ class WidgetGallery(QDialog):
         # self.Update()
 
     def Stop(self):
+        self.running = False
         self.cam.Stop()
 
     def Shutdown(self):
@@ -205,12 +211,14 @@ class WidgetGallery(QDialog):
             try:
                 self.view = self.cam.getImage()
                 self.frameCounter += 1
-            except:
+            except Exception as e:
+                print(e)
                 pass
-            cmap = self.ax.imshow(self.view, vmin=self.vmin, vmax=self.vmax)
-            # cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
-            self.cbar.remove()
-            self.cbar = self.figure.colorbar(cmap, ax=self.ax)
+            # cmap = self.ax.imshow(self.view, vmin=self.vmin, vmax=self.vmax)
+            # # cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
+            # self.cbar.remove()
+            # self.cbar = self.figure.colorbar(cmap, ax=self.ax)
+            self.canvas.setImage(self.view)
             self.mean_value.setText(str(np.mean(self.view)))
             self.frame_value.setText(str(self.frameCounter))
 
@@ -221,13 +229,13 @@ class WidgetGallery(QDialog):
             # plt.pause(0.1)
 
             # fetch camera metadata
-            self.fps.output.setText(str(self.cam.getFps()))
-            self.exptime.output.setText(str(self.cam.getTint()))
-            self.gain.output.setText(str(self.cam.getGain()))
             self.temp.output.setText(str(self.cam.getTemp()))
-            self.roi.output.setText(str(self.cam.getRoi()))
+            self.fps.output.setText(str(self.cam.getFps()))
+            self.exptime.output.setText(str(self.cam.getExptime()))
+            self.gain.output.setText(str(self.cam.getGain()))
             self.shutter.output.setText(str(self.cam.getShutter()))
             self.mode.output.setText(str(self.cam.getHdr()))
+            self.roi.output.setText(str(self.cam.getRoi()))
             # sleep(interval)
 
             # find the spot
@@ -237,11 +245,22 @@ class WidgetGallery(QDialog):
                 self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
             except AttributeError:
                 pass
+            ax = self.canvas.getView()
+            try:
+                ax.removeItem(self.spot_mark1)
+                ax.removeItem(self.spot_mark2)
+            except AttributeError:
+                pass
+            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            ax.addItem(self.spot_mark1)
+            ax.addItem(self.spot_mark2)
+
 
     def Apply(self):
         # change camera settings
-        for setting,func in zip([self.temp, self.fps, self.exptime, self.gain, self.roi, self.shutter, self.mode],
-                                [self.cam.setTemp, self.cam.setFps, self.cam.setExptime, self.cam.setGain, self.cam.setRoi, self.cam.setShutter, self.cam.setMode]):
+        for setting,func in zip([self.temp, self.fps, self.exptime, self.gain, self.mode, self.shutter, self.roi],
+                                [self.cam.setTemp, self.cam.setFps, self.cam.setExptime, self.cam.setGain, self.cam.setMode, self.cam.setShutter, self.cam.setRoi]):
             if setting.input.isModified():
                 value = setting.input.text()
                 try:
@@ -298,13 +317,25 @@ class WidgetGallery(QDialog):
         self.pos_x, self.pos_y = float(self.pos_x), float(self.pos_y)
         #pos_x = 50
         #pos_y = 50
-        size = 0.05
-        self.ax.plot([self.pos_x, self.pos_x], [self.pos_y-size*self.cam.height, self.pos_y+size*self.cam.height], color='red')
-        self.ax.plot([self.pos_x-size*self.cam.width, self.pos_x+size*self.cam.width], [self.pos_y, self.pos_y], color='red')
+        #size = 0.05
+        #self.ax.plot([self.pos_x, self.pos_x], [self.pos_y-size*self.cam.height, self.pos_y+size*self.cam.height], color='red', linewidth=1)
+        #self.ax.plot([self.pos_x-size*self.cam.width, self.pos_x+size*self.cam.width], [self.pos_y, self.pos_y], color='red', linewidth=1)
+
+        ax = self.canvas.getView()
         try:
-            self.canvas.draw()
-        except:
+            ax.removeItem(self.target_mark1)
+            ax.removeItem(self.target_mark2)
+        except AttributeError:
             pass
+        self.target_mark1 = pg.PlotCurveItem(x=[self.pos_x,self.pos_x], y=[0, self.cam.height-1], pen='red')
+        self.target_mark2 = pg.PlotCurveItem(x=[0,self.cam.width-1], y=[self.pos_y, self.pos_y], pen='red')
+        ax.addItem(self.target_mark1)
+        ax.addItem(self.target_mark2)
+
+        # try:
+        #     self.canvas.draw()
+        # except:
+        #     pass
 
 
 if __name__ == '__main__':

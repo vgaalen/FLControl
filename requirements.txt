@@ -4,3 +4,5 @@ numpy
 pandas
 astropy
 scipy
+vmbpy
+pyqtgraph
