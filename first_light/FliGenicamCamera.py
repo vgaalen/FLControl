@@ -1,4 +1,4 @@
-from sdk import LibLoader
+from first_light import LibLoader
 import ctypes
 
 bufferSize = ctypes.c_size_t(1000)

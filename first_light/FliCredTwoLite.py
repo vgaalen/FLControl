@@ -1,4 +1,4 @@
-from sdk import LibLoader
+from first_light import LibLoader
 import ctypes
 import numpy as np
 

@@ -15,7 +15,7 @@ def interface(func):
     return wrapper
 
 def start_fli_cam():
-    import sdk.FliSdk_V2 as FliSdk
+    import first_light.FliSdk_V2 as FliSdk
     import ctypes
     context = FliSdk.Init()
     # call before DetectCameras or it fails for some reason ...
@@ -53,7 +53,7 @@ def start_fli_cam():
 
 class FliCamera:
     def __init__(self, context, name="UNKNOWN"):
-        import sdk.FliSdk_V2 as FliSdk
+        import first_light.FliSdk_V2 as FliSdk
         import ctypes
         self.name = name
         self.context = context
@@ -505,7 +505,8 @@ class AlliedCam:
     def getFps(self):
         pass
     def getTint(self):
-        pass
+        return self.cam.ExposureTime.get()
+
     def getGain(self):
         pass
     def getTemp(self):
@@ -518,6 +519,9 @@ class AlliedCam:
         pass
     def setFps(self, fps):
         pass
+    def setTint(self, exptime):
+        self.cam.ExposureTime.set(exptime)
+
     def setGain(self, gain):
         pass
     def setTemp(self, temp):
