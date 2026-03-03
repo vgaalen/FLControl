@@ -62,9 +62,9 @@ class ButtonGroup:
         grid.addWidget(self.button, *location)
 
 class WidgetGallery(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, interface, cam, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        self.cam = cameras.Start()
+        self.cam = cameras.Start(interface, cam)
 
         self.view = np.zeros((self.cam.height, self.cam.width))
         self.frameCounter = 0
@@ -214,19 +214,10 @@ class WidgetGallery(QDialog):
             except Exception as e:
                 print(e)
                 pass
-            # cmap = self.ax.imshow(self.view, vmin=self.vmin, vmax=self.vmax)
-            # # cmap = self.ax.imshow(np.zeros((100,100)), vmin=self.vmin, vmax=self.vmax)
-            # self.cbar.remove()
-            # self.cbar = self.figure.colorbar(cmap, ax=self.ax)
-            self.canvas.setImage(self.view)
+            
+            self.canvas.setImage(self.view, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
             self.frame_value.setText(str(self.frameCounter))
-
-            try:
-                self.canvas.draw()
-            except:
-                pass
-            # plt.pause(0.1)
 
             # fetch camera metadata
             self.temp.output.setText(str(self.cam.getTemp()))
@@ -234,7 +225,7 @@ class WidgetGallery(QDialog):
             self.exptime.output.setText(str(self.cam.getExptime()))
             self.gain.output.setText(str(self.cam.getGain()))
             self.shutter.output.setText(str(self.cam.getShutter()))
-            self.mode.output.setText(str(self.cam.getHdr()))
+            self.mode.output.setText(str(self.cam.getMode()))
             self.roi.output.setText(str(self.cam.getRoi()))
             # sleep(interval)
 
@@ -340,8 +331,16 @@ class WidgetGallery(QDialog):
 
 if __name__ == '__main__':
     import sys
+    import vmbpy
 
-    app = QApplication(sys.argv)
-    gallery = WidgetGallery()
-    gallery.show()
-    sys.exit(app.exec())
+    interface = vmbpy.VmbSystem.get_instance()
+    with interface:
+        cams = interface.get_all_cameras()
+        for cam in cams:
+            print(cam)
+        cam = cams[0]
+        with cam:
+            app = QApplication(sys.argv)
+            gallery = WidgetGallery(interface, cam)
+            gallery.show()
+            sys.exit(app.exec())

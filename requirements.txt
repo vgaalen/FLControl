@@ -6,3 +6,4 @@ astropy
 scipy
 vmbpy
 pyqtgraph
+opencv-python

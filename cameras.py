@@ -118,7 +118,7 @@ class DemoCam:
     def setShutter(self, shutter):
         return True
 
-def Start():
+def Start(interface, cam):
     res = int(input("""Choose the camera type: 
     1: Demo
     2: First Light Imaging
@@ -131,10 +131,10 @@ def Start():
         from first_light import start_fli_cam
         return start_fli_cam()
     elif res == 3:
-        from qhyccd import QhyCam
+        from qhy import QhyCam
         return QhyCam()
     elif res == 4:
         from allied import AlliedCam
-        return AlliedCam()
+        return AlliedCam(interface, cam)
     else:
         raise Exception("Invalid input")
