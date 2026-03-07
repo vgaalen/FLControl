@@ -16,7 +16,7 @@ from typing import Optional, Literal
 plt.ion()
 
 from Capture import capture
-from Execute import execute
+from Execute import execute, execute_monitoring
 import cameras
 from fitting import gaussian
 
@@ -230,22 +230,22 @@ class WidgetGallery(QDialog):
             # sleep(interval)
 
             # find the spot
-            self.spot_x, self.spot_y = gaussian(self.view)
-            self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-            try:
-                self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
-            except AttributeError:
-                pass
-            ax = self.canvas.getView()
-            try:
-                ax.removeItem(self.spot_mark1)
-                ax.removeItem(self.spot_mark2)
-            except AttributeError:
-                pass
-            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
-            ax.addItem(self.spot_mark1)
-            ax.addItem(self.spot_mark2)
+            # self.spot_x, self.spot_y = gaussian(self.view)
+            # self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+            # try:
+            #     self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+            # except AttributeError:
+            #     pass
+            # ax = self.canvas.getView()
+            # try:
+            #     ax.removeItem(self.spot_mark1)
+            #     ax.removeItem(self.spot_mark2)
+            # except AttributeError:
+            #     pass
+            # self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+            # self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            # ax.addItem(self.spot_mark1)
+            # ax.addItem(self.spot_mark2)
 
 
     def Apply(self):
@@ -290,7 +290,7 @@ class WidgetGallery(QDialog):
         self.updateProgressBar(itt=0)
         try:
             # res = execute(self.cam)
-            thread = threading.Thread(target=execute, args=[self.cam],
+            thread = threading.Thread(target=execute_monitoring, args=[self.cam],
                                                kwargs={'progress_func': self.updateProgressBar,
                                                        'exit_status_func': self.capture_status.setText})
             thread.start()
@@ -333,13 +333,17 @@ if __name__ == '__main__':
     import sys
     import vmbpy
 
+    print("Starting AlignmentViewer")
     interface = vmbpy.VmbSystem.get_instance()
+    print("Loaded Vimba Interface")
     with interface:
         cams = interface.get_all_cameras()
         for cam in cams:
             print(cam)
         cam = cams[0]
+        print("Loading Camera")
         with cam:
+            print("Camera Loaded")
             app = QApplication(sys.argv)
             gallery = WidgetGallery(interface, cam)
             gallery.show()
