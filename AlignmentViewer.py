@@ -18,7 +18,7 @@ plt.ion()
 from Capture import capture
 from Execute import execute, execute_monitoring
 import cameras
-from fitting import gaussian
+from fitting import gaussian, com
 
 import pyqtgraph as pg
 
@@ -26,6 +26,7 @@ class CtrlGroup:
     # Set of QT elements to control and monitor a parameter
     def __init__(self, label: str, grid: QGridLayout, row: int, type: Optional[Literal["LineEdit", "ComboBox"]]="LineEdit", options: Optional[list[str]]=None, default: Optional[str]="?"):
         self.label = QLabel(label)
+        self.type = type
         if type == "LineEdit":
             self.input = QLineEdit("")
         elif type == "ComboBox":
@@ -70,6 +71,8 @@ class WidgetGallery(QDialog):
         self.frameCounter = 0
         self.spot_x = 0
         self.spot_y = 0
+        self.pos_x = None
+        self.pos_y = None
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -139,6 +142,17 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.spot_label, 3, 0)
         layout.addWidget(self.spot_position, 3, 1)
         layout.addWidget(self.spot_delta, 3, 2, 1, 3)
+
+        # Avg spot position
+        self.avg_selector = QComboBox()
+        self.avg_selector.addItems(["Avg 1", "Avg 2", "Avg 10", "Avg 100"])
+        self.avg_abs = QLabel("?, ?")
+        self.avg_delta = QLabel("?, ?")
+        self.avg_buffer = np.zeros((1,2))
+        self.avg_buffer_pointer = 0
+        layout.addWidget(self.avg_selector, 4, 0)
+        layout.addWidget(self.avg_abs, 4, 1)
+        layout.addWidget(self.avg_delta, 4, 2, 1, 3)
 
         layout.setRowStretch(0, 1)
         self.ViewGroupBox.setLayout(layout)
@@ -215,7 +229,7 @@ class WidgetGallery(QDialog):
                 print(e)
                 pass
             
-            self.canvas.setImage(self.view, autoLevels=False, autoRange=False)
+            self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
             self.frame_value.setText(str(self.frameCounter))
 
@@ -230,34 +244,51 @@ class WidgetGallery(QDialog):
             # sleep(interval)
 
             # find the spot
-            # self.spot_x, self.spot_y = gaussian(self.view)
-            # self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-            # try:
-            #     self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
-            # except AttributeError:
-            #     pass
-            # ax = self.canvas.getView()
-            # try:
-            #     ax.removeItem(self.spot_mark1)
-            #     ax.removeItem(self.spot_mark2)
-            # except AttributeError:
-            #     pass
-            # self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            # self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
-            # ax.addItem(self.spot_mark1)
-            # ax.addItem(self.spot_mark2)
+            self.spot_y, self.spot_x = com(self.view) #gaussian(self.view)
+            self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+            if self.pos_x is not None and self.pos_y is not None:
+                self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+            ax = self.canvas.getView()
+            try:
+                ax.removeItem(self.spot_mark1)
+                ax.removeItem(self.spot_mark2)
+            except AttributeError:
+                pass
+            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            ax.addItem(self.spot_mark1)
+            ax.addItem(self.spot_mark2)
+
+            if self.avg_buffer_pointer >= self.avg_buffer.shape[0]:
+                self.avg_buffer_pointer = 0
+            self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
+            self.avg_buffer_pointer += 1
+            self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
+            if self.pos_x is not None and self.pos_y is not None:
+                self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
 
 
     def Apply(self):
         # change camera settings
         for setting,func in zip([self.temp, self.fps, self.exptime, self.gain, self.mode, self.shutter, self.roi],
                                 [self.cam.setTemp, self.cam.setFps, self.cam.setExptime, self.cam.setGain, self.cam.setMode, self.cam.setShutter, self.cam.setRoi]):
-            if setting.input.isModified():
-                value = setting.input.text()
+            if setting.type == "LineEdit":
+                if setting.input.isModified():
+                    value = setting.input.text()
+                    try:
+                        func(value)
+                    except ValueError:
+                        print(f"[Warning] Unable to update {setting.label}")
+            else:
+                value = setting.input.currentText()
                 try:
                     func(value)
                 except ValueError:
                     print(f"[Warning] Unable to update {setting.label}")
+        
+        avg_setting = self.avg_selector.currentText().split("Avg ")[-1]
+        self.avg_buffer = np.zeros((int(avg_setting),2))
+
 
     def apply_vmin(self, value):
         self.vmin = value
