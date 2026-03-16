@@ -62,9 +62,9 @@ class ButtonGroup:
         grid.addWidget(self.button, *location)
 
 class WidgetGallery(QDialog):
-    def __init__(self, interface, cam, parent=None):
+    def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        self.cam = cameras.Start(interface, cam)
+        self.cam = cameras.Start()
 
         self.view = np.zeros((self.cam.height, self.cam.width))
         self.frameCounter = 0
@@ -331,16 +331,21 @@ class WidgetGallery(QDialog):
 
 if __name__ == '__main__':
     import sys
-    import vmbpy
+    # import vmbpy
 
-    interface = vmbpy.VmbSystem.get_instance()
-    with interface:
-        cams = interface.get_all_cameras()
-        for cam in cams:
-            print(cam)
-        cam = cams[0]
-        with cam:
-            app = QApplication(sys.argv)
-            gallery = WidgetGallery(interface, cam)
-            gallery.show()
-            sys.exit(app.exec())
+    # interface = vmbpy.VmbSystem.get_instance()
+    # with interface:
+    #     cams = interface.get_all_cameras()
+    #     for cam in cams:
+    #         print(cam)
+    #     cam = cams[0]
+    #     with cam:
+    #         app = QApplication(sys.argv)
+    #         gallery = WidgetGallery(interface, cam)
+    #         gallery.show()
+    #         sys.exit(app.exec())
+    
+    app = QApplication(sys.argv)
+    gallery = WidgetGallery()
+    gallery.show()
+    sys.exit(app.exec())

@@ -10,7 +10,8 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 class QhyCam:
     def __init__(self):
         self.interface = cdll.LoadLibrary('.\\qhy\\qhyccd.dll')
-        self.interface.InitQHYCCD()
+        res = self.interface.InitQHYCCD()
+        print(res)
         print(self.interface.GetQHYCCDChipInfo())
 
         self.Shutters = {'N/A': 0}
