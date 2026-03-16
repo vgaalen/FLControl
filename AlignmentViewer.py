@@ -26,6 +26,7 @@ class CtrlGroup:
     # Set of QT elements to control and monitor a parameter
     def __init__(self, label: str, grid: QGridLayout, row: int, type: Optional[Literal["LineEdit", "ComboBox"]]="LineEdit", options: Optional[list[str]]=None, default: Optional[str]="?"):
         self.label = QLabel(label)
+        self.type = type
         if type == "LineEdit":
             self.input = QLineEdit("")
         elif type == "ComboBox":
@@ -215,7 +216,7 @@ class WidgetGallery(QDialog):
                 print(e)
                 pass
             
-            self.canvas.setImage(self.view, autoLevels=False, autoRange=False)
+            self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
             self.frame_value.setText(str(self.frameCounter))
 
@@ -230,30 +231,37 @@ class WidgetGallery(QDialog):
             # sleep(interval)
 
             # find the spot
-            self.spot_x, self.spot_y = gaussian(self.view)
-            self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-            try:
-                self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
-            except AttributeError:
-                pass
-            ax = self.canvas.getView()
-            try:
-                ax.removeItem(self.spot_mark1)
-                ax.removeItem(self.spot_mark2)
-            except AttributeError:
-                pass
-            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
-            ax.addItem(self.spot_mark1)
-            ax.addItem(self.spot_mark2)
+            # self.spot_x, self.spot_y = gaussian(self.view)
+            # self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+            # try:
+            #     self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+            # except AttributeError:
+            #     pass
+            # ax = self.canvas.getView()
+            # try:
+            #     ax.removeItem(self.spot_mark1)
+            #     ax.removeItem(self.spot_mark2)
+            # except AttributeError:
+            #     pass
+            # self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+            # self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            # ax.addItem(self.spot_mark1)
+            # ax.addItem(self.spot_mark2)
 
 
     def Apply(self):
         # change camera settings
         for setting,func in zip([self.temp, self.fps, self.exptime, self.gain, self.mode, self.shutter, self.roi],
                                 [self.cam.setTemp, self.cam.setFps, self.cam.setExptime, self.cam.setGain, self.cam.setMode, self.cam.setShutter, self.cam.setRoi]):
-            if setting.input.isModified():
-                value = setting.input.text()
+            if setting.type == "LineEdit":
+                if setting.input.isModified():
+                    value = setting.input.text()
+                    try:
+                        func(value)
+                    except ValueError:
+                        print(f"[Warning] Unable to update {setting.label}")
+            elif setting.type == "ComboBox":
+                value = setting.input.currentText()
                 try:
                     func(value)
                 except ValueError:

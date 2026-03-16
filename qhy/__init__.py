@@ -223,13 +223,13 @@ class QhyCam:
         print("GetQHYCCDSingleFrame() ret =", ret, "w =", w.value, "h =", h.value, "b =", b.value, "c =", c.value,
             "data size =", int(w.value * h.value * b.value * c.value / 8))
         print("data =", imgdata[100000])
-        return np.frombuffer(imgdata, dtype=np.uint32).reshape(self.height,self.width)
+        return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
 
     def getFps(self):
         return
 
     def getExptime(self):
-        return #self.cam.exposureMS
+        ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value)
 
     def getGain(self):
         return "?"
@@ -250,7 +250,7 @@ class QhyCam:
         pass#self.cam.SetExposure(1000*1/fps)
 
     def setExptime(self, exptime):
-        pass#self.cam.SetExposure(exptime)
+        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, float(exptime))
 
     def setGain(self, gain):
         print("[Warning] Changing the gain is not supported")
