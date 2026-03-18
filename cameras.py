@@ -130,6 +130,7 @@ def Start(interface, cam, interface: Literal["Demo", "FLI", "QHY", "Allied"]):
         return QhyCam()
     elif interface=="Allied":
         from allied import AlliedCam
-        return AlliedCam(interface, cam)
+        # return AlliedCam(interface, cam)
+        raise Exception("Invalid input")
     else:
         raise Exception("Invalid input")

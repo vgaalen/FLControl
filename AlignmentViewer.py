@@ -63,7 +63,7 @@ class ButtonGroup:
         grid.addWidget(self.button, *location)
 
 class WidgetGallery(QDialog):
-    def __init__(self, interface, cam, parent=None):
+    def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
         self.cam = cam
 
