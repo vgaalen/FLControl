@@ -16,9 +16,9 @@ from typing import Optional, Literal
 plt.ion()
 
 from Capture import capture
-from Execute import execute
+from Execute import execute, execute_monitoring
 import cameras
-from fitting import gaussian
+from fitting import gaussian, com
 
 import pyqtgraph as pg
 
@@ -65,12 +65,14 @@ class ButtonGroup:
 class WidgetGallery(QDialog):
     def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        self.cam = cameras.Start()
+        self.cam = cam
 
         self.view = np.zeros((self.cam.height, self.cam.width))
         self.frameCounter = 0
         self.spot_x = 0
         self.spot_y = 0
+        self.pos_x = None
+        self.pos_y = None
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -140,6 +142,17 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.spot_label, 3, 0)
         layout.addWidget(self.spot_position, 3, 1)
         layout.addWidget(self.spot_delta, 3, 2, 1, 3)
+
+        # Avg spot position
+        self.avg_selector = QComboBox()
+        self.avg_selector.addItems(["Avg 1", "Avg 2", "Avg 10", "Avg 100"])
+        self.avg_abs = QLabel("?, ?")
+        self.avg_delta = QLabel("?, ?")
+        self.avg_buffer = np.zeros((1,2))
+        self.avg_buffer_pointer = 0
+        layout.addWidget(self.avg_selector, 4, 0)
+        layout.addWidget(self.avg_abs, 4, 1)
+        layout.addWidget(self.avg_delta, 4, 2, 1, 3)
 
         layout.setRowStretch(0, 1)
         self.ViewGroupBox.setLayout(layout)
@@ -231,22 +244,28 @@ class WidgetGallery(QDialog):
             # sleep(interval)
 
             # find the spot
-            # self.spot_x, self.spot_y = gaussian(self.view)
-            # self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-            # try:
-            #     self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
-            # except AttributeError:
-            #     pass
-            # ax = self.canvas.getView()
-            # try:
-            #     ax.removeItem(self.spot_mark1)
-            #     ax.removeItem(self.spot_mark2)
-            # except AttributeError:
-            #     pass
-            # self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            # self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
-            # ax.addItem(self.spot_mark1)
-            # ax.addItem(self.spot_mark2)
+            self.spot_y, self.spot_x = com(self.view) #gaussian(self.view)
+            self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+            if self.pos_x is not None and self.pos_y is not None:
+                self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+            ax = self.canvas.getView()
+            try:
+                ax.removeItem(self.spot_mark1)
+                ax.removeItem(self.spot_mark2)
+            except AttributeError:
+                pass
+            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            ax.addItem(self.spot_mark1)
+            ax.addItem(self.spot_mark2)
+
+            if self.avg_buffer_pointer >= self.avg_buffer.shape[0]:
+                self.avg_buffer_pointer = 0
+            self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
+            self.avg_buffer_pointer += 1
+            self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
+            if self.pos_x is not None and self.pos_y is not None:
+                self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
 
 
     def Apply(self):
@@ -260,12 +279,16 @@ class WidgetGallery(QDialog):
                         func(value)
                     except ValueError:
                         print(f"[Warning] Unable to update {setting.label}")
-            elif setting.type == "ComboBox":
+            else:
                 value = setting.input.currentText()
                 try:
                     func(value)
                 except ValueError:
                     print(f"[Warning] Unable to update {setting.label}")
+        
+        avg_setting = self.avg_selector.currentText().split("Avg ")[-1]
+        self.avg_buffer = np.zeros((int(avg_setting),2))
+
 
     def apply_vmin(self, value):
         self.vmin = value
@@ -298,7 +321,7 @@ class WidgetGallery(QDialog):
         self.updateProgressBar(itt=0)
         try:
             # res = execute(self.cam)
-            thread = threading.Thread(target=execute, args=[self.cam],
+            thread = threading.Thread(target=execute_monitoring, args=[self.cam],
                                                kwargs={'progress_func': self.updateProgressBar,
                                                        'exit_status_func': self.capture_status.setText})
             thread.start()
@@ -339,21 +362,35 @@ class WidgetGallery(QDialog):
 
 if __name__ == '__main__':
     import sys
-    # import vmbpy
+    print("Starting AlignmentViewer")
 
-    # interface = vmbpy.VmbSystem.get_instance()
-    # with interface:
-    #     cams = interface.get_all_cameras()
-    #     for cam in cams:
-    #         print(cam)
-    #     cam = cams[0]
-    #     with cam:
-    #         app = QApplication(sys.argv)
-    #         gallery = WidgetGallery(interface, cam)
-    #         gallery.show()
-    #         sys.exit(app.exec())
-    
-    app = QApplication(sys.argv)
-    gallery = WidgetGallery()
-    gallery.show()
-    sys.exit(app.exec())
+    res = int(input("""Choose the camera type: 
+    1: Demo
+    2: First Light Imaging
+    3: QHYCCD
+    4: Allied Vision
+    """))
+
+    if res==4:
+        import vmbpy
+        interface = vmbpy.VmbSystem.get_instance()
+        print("Loaded Vimba Interface")
+        with interface:
+            cams = interface.get_all_cameras()
+            for cam in cams:
+                print(cam)
+            cam = cams[0]
+            print("Loading Camera")
+            with cam:
+                print("Camera Loaded")
+                cam = cameras.Start(interface, cam, "Allied")
+                app = QApplication(sys.argv)
+                gallery = WidgetGallery(interface, cam)
+                gallery.show()
+                sys.exit(app.exec())
+    else:
+        cam = cameras.Start(interface, cam, ["Demo","FLI","QHY","Allied"][res-1])
+        app = QApplication(sys.argv)
+        gallery = WidgetGallery(interface, cam)
+        gallery.show()
+        sys.exit(app.exec())

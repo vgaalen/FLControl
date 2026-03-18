@@ -13,6 +13,16 @@ from time import sleep
 #from Capture import Initialize, get_bias, get_dark
 from Capture import capture
 
+def execute_monitoring(cam, progress_func=None, exit_status_func=None):
+    folder = f"data/{datetime.now():%Y%m%d}"
+    Path(folder).mkdir(parents=True, exist_ok=True)
+    print(folder)
+
+    while True:
+        capture(cam, 10, file=folder+'/'+f"{datetime.now():%Y%m%d_%H%M%S}"+'.fits')
+        sleep(10*60)
+    
+
 def execute(cam, runfile="runplan.csv", progress_func=None, exit_status_func=None):
     folder = f"data/{datetime.now():%Y%m%d}"
     Path(folder).mkdir(parents=True, exist_ok=True)

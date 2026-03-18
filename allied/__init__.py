@@ -8,6 +8,7 @@ class AlliedCam:
     def __init__(self, interface, cam):
         self.interface = interface
         self.cam = cam
+        self.name = "Allied Vision Goldeye"
 
         self.features = self.cam.get_all_features()
         
@@ -93,6 +94,12 @@ class AlliedCam:
         pointer = frame.get_buffer()
         data = np.frombuffer(pointer, dtype=np.uint16).reshape(self.height, self.width)
         return data
+    
+    def getImages(self, nframes):
+        buffer = np.zeros((nframes, self.height, self.width))
+        for i in range(nframes):
+            buffer[i] = self.getImage()
+        return buffer
 #         # if self.cam.is_streaming:
 #         #     if self.frame is None:
 #         #         self.frame = self.cam.get_frame()
@@ -125,8 +132,9 @@ class AlliedCam:
         pass
     def getTemp(self):
         # DeviceTemperature
-        #self.cam.get
-        pass
+        return self.temp.get()
+    def getTempSetpoint(self):
+        return f"{self.temp_setpoint.get()}, {self.temp_sel.get()}"
     def getRoi(self):
         pass
     def getShutter(self):

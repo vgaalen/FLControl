@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Literal
 
 class CamTemplate:
     # For reference when adding new cameras
@@ -118,22 +119,16 @@ class DemoCam:
     def setShutter(self, shutter):
         return True
 
-def Start():
-    res = int(input("""Choose the camera type: 
-    1: Demo
-    2: First Light Imaging
-    3: QHYCCD
-    4: Allied Vision
-    """))
-    if res == 1:
+def Start(interface, cam, interface: Literal["Demo", "FLI", "QHY", "Allied"]):
+    if interface=="Demo":
         return DemoCam()
-    elif res == 2:
+    elif interface == "FLI":
         from first_light import start_fli_cam
         return start_fli_cam()
-    elif res == 3:
+    elif interface=="QHY":
         from qhy import QhyCam
         return QhyCam()
-    elif res == 4:
+    elif interface=="Allied":
         from allied import AlliedCam
         # return AlliedCam(interface, cam)
         raise Exception("Invalid input")
