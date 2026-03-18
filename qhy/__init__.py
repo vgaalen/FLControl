@@ -163,22 +163,22 @@ class QhyCam:
         self.width, self.height = imageW.value, imageH.value
 
         ret = self.interface.SetQHYCCDBinMode(self.camhandle, 1, 1)
-        print("SetQHYCCDBinMode() ret =", ret)
+        #print("SetQHYCCDBinMode() ret =", ret)
 
         ret = self.interface.SetQHYCCDResolution(self.camhandle, 0, 0, imageW.value, imageH.value)
-        print("SetQHYCCDResolution() ret =", ret)
+        #print("SetQHYCCDResolution() ret =", ret)
 
         ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, 100000.0)
-        print("SetQHYCCDParam() exposure 20ms ret =", ret)
+        #print("SetQHYCCDParam() exposure 20ms ret =", ret)
 
         ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value, 50.0)
-        print("SetQHYCCDParam() gain 40 ret =", ret)
+        #print("SetQHYCCDParam() gain 40 ret =", ret)
 
         ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_OFFSET.value, 80.0)
-        print("SetQHYCCDParam() offset 60 ret =", ret)
+        #print("SetQHYCCDParam() offset 60 ret =", ret)
 
         ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_USBTRAFFIC.value, 0.0)
-        print("SetQHYCCDParam() usbtraffic 0 ret =", ret)
+        #print("SetQHYCCDParam() usbtraffic 0 ret =", ret)
 
         self.Shutters = {'N/A': 0}
         self.Modes = {'N/A': 0}
@@ -226,34 +226,46 @@ class QhyCam:
         return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
 
     def getFps(self):
-        return
+        ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_SPEED.value)
+        return ret
 
     def getExptime(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value)
+        return ret
 
     def getGain(self):
-        return "?"
+        ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value)
+        return ret
 
     def getTemp(self):
-        return "?"
+        ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_CURTEMP.value)
+        return ret
 
     def getRoi(self):
-        return "?"
+        return "Not Supported"
 
     def getShutter(self):
-        return "?"
+        return "Not Supported"
 
     def getMode(self):
-        return "?"
+        return "Not Supported"
 
     def setFps(self, fps):
-        pass#self.cam.SetExposure(1000*1/fps)
+        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_SPEED.value, float(fps))
+        if ret == 0:
+            return True
+        return False
 
     def setExptime(self, exptime):
         ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, float(exptime))
+        if ret == 0:
+            return True
+        return False
 
     def setGain(self, gain):
-        print("[Warning] Changing the gain is not supported")
+        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value, 50.0)
+        if ret == 0:
+            return True
         return False
 
     def setTemp(self, temp):
