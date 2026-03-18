@@ -63,7 +63,7 @@ class ButtonGroup:
         grid.addWidget(self.button, *location)
 
 class WidgetGallery(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, cam, parent=None):
         super(WidgetGallery, self).__init__(parent)
         self.cam = cam
 
@@ -228,6 +228,9 @@ class WidgetGallery(QDialog):
             except Exception as e:
                 print(e)
                 pass
+
+            self.view[self.view==np.max(self.view)] = 0
+            self.view[self.view<0.1*np.max(self.view)] = 0
             
             self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
@@ -383,14 +386,14 @@ if __name__ == '__main__':
             print("Loading Camera")
             with cam:
                 print("Camera Loaded")
-                cam = cameras.Start(interface, cam, "Allied")
+                cam = cameras.Start("Allied", interface=interface, cam=cam)
                 app = QApplication(sys.argv)
-                gallery = WidgetGallery(interface, cam)
+                gallery = WidgetGallery(cam)
                 gallery.show()
                 sys.exit(app.exec())
     else:
-        cam = cameras.Start(interface, cam, ["Demo","FLI","QHY","Allied"][res-1])
+        cam = cameras.Start(["Demo","FLI","QHY","Allied"][res-1])
         app = QApplication(sys.argv)
-        gallery = WidgetGallery(interface, cam)
+        gallery = WidgetGallery(cam)
         gallery.show()
         sys.exit(app.exec())
