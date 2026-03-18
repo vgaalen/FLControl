@@ -65,7 +65,7 @@ class ButtonGroup:
 class WidgetGallery(QDialog):
     def __init__(self, interface, cam, parent=None):
         super(WidgetGallery, self).__init__(parent)
-        self.cam = cameras.Start(interface, cam)
+        self.cam = cam
 
         self.view = np.zeros((self.cam.height, self.cam.width))
         self.frameCounter = 0
@@ -362,20 +362,35 @@ class WidgetGallery(QDialog):
 
 if __name__ == '__main__':
     import sys
-    import vmbpy
-
     print("Starting AlignmentViewer")
-    interface = vmbpy.VmbSystem.get_instance()
-    print("Loaded Vimba Interface")
-    with interface:
-        cams = interface.get_all_cameras()
-        for cam in cams:
-            print(cam)
-        cam = cams[0]
-        print("Loading Camera")
-        with cam:
-            print("Camera Loaded")
-            app = QApplication(sys.argv)
-            gallery = WidgetGallery(interface, cam)
-            gallery.show()
-            sys.exit(app.exec())
+
+    res = int(input("""Choose the camera type: 
+    1: Demo
+    2: First Light Imaging
+    3: QHYCCD
+    4: Allied Vision
+    """))
+
+    if res==4:
+        import vmbpy
+        interface = vmbpy.VmbSystem.get_instance()
+        print("Loaded Vimba Interface")
+        with interface:
+            cams = interface.get_all_cameras()
+            for cam in cams:
+                print(cam)
+            cam = cams[0]
+            print("Loading Camera")
+            with cam:
+                print("Camera Loaded")
+                cam = cameras.Start(interface, cam, "Allied")
+                app = QApplication(sys.argv)
+                gallery = WidgetGallery(interface, cam)
+                gallery.show()
+                sys.exit(app.exec())
+    else:
+        cam = cameras.Start(interface, cam, ["Demo","FLI","QHY","Allied"][res-1])
+        app = QApplication(sys.argv)
+        gallery = WidgetGallery(interface, cam)
+        gallery.show()
+        sys.exit(app.exec())
