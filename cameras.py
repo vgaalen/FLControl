@@ -4,6 +4,7 @@ from typing import Literal
 class CamTemplate:
     # For reference when adding new cameras
     def __init__(self):
+        self.name = "Template"
         self.Shutters = {'N/A': 0}
         self.Modes = {'N/A': 0}
         self.width, self.height = 0, 0
@@ -22,6 +23,8 @@ class CamTemplate:
     def getGain(self):
         pass
     def getTemp(self):
+        pass
+    def getTempSetpoint(self):
         pass
     def getRoi(self):
         pass
