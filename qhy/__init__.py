@@ -126,6 +126,7 @@ class QhyCam:
             ret = self.interface.GetQHYCCDId(index, id_buffer)
             result_id = id_buffer.value.decode("utf-8")
             print("GetQHYCCDId() ret =", ret, "id =", result_id)
+            self.name = result_id
 
             self.camhandle = self.interface.OpenQHYCCD(id_buffer)
             print("OpenQHYCCD() camhandle =", hex(self.camhandle))
@@ -225,6 +226,12 @@ class QhyCam:
         print("data =", imgdata[100000])
         return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
 
+    def getImages(self, nframes):
+        buffer = np.zeros((nframes, self.height, self.width))
+        for i in range(nframes):
+            buffer[i] = self.getImage()
+        return buffer
+
     def getFps(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_SPEED.value)
         return ret
@@ -240,6 +247,9 @@ class QhyCam:
     def getTemp(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_CURTEMP.value)
         return ret
+    
+    def getTempSetpoint(self):
+        return " "
 
     def getRoi(self):
         return "Not Supported"
@@ -266,7 +276,9 @@ class QhyCam:
         ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value, 50.0)
         if ret == 0:
             return True
-        return False
+        else:
+            print(f"[Warning]: Unable to set gain - {ret}")
+            return False
 
     def setTemp(self, temp):
         print("[Warning] Changing the temperature is not supported")
