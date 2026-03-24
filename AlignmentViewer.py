@@ -18,7 +18,7 @@ plt.ion()
 from Capture import capture
 from Execute import execute, execute_monitoring
 import cameras
-from fitting import gaussian, com
+from fitting import gaussian, com, _fourier_filtering
 
 import pyqtgraph as pg
 
@@ -73,6 +73,7 @@ class WidgetGallery(QDialog):
         self.spot_y = 0
         self.pos_x = None
         self.pos_y = None
+        self.fitting_algorithm = gaussian
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -136,7 +137,9 @@ class WidgetGallery(QDialog):
         self.target_position = CtrlGroup("Target Position 'x,y'", layout, 2, default="")
         self.target_apply = ButtonGroup("Set", self.add_target, layout, (2,2,1,3))
 
-        self.spot_label = QLabel("Spot Position: ")
+        #self.spot_label = QLabel("Spot Position: ")
+        self.spot_label = QComboBox()
+        self.spot_label.addItems(["CoM Fit", "Gaussian Fit"])
         self.spot_position = QLabel("?, ?")
         self.spot_delta = QLabel("")
         layout.addWidget(self.spot_label, 3, 0)
@@ -231,6 +234,7 @@ class WidgetGallery(QDialog):
 
             self.view[self.view==np.max(self.view)] = 0
             self.view[self.view<0.1*np.max(self.view)] = 0
+            self.view = _fourier_filtering(self.view, radius=25)
             
             self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
@@ -247,7 +251,7 @@ class WidgetGallery(QDialog):
             # sleep(interval)
 
             # find the spot
-            self.spot_y, self.spot_x = com(self.view) #gaussian(self.view)
+            self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
             self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
             if self.pos_x is not None and self.pos_y is not None:
                 self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
@@ -291,6 +295,13 @@ class WidgetGallery(QDialog):
         
         avg_setting = self.avg_selector.currentText().split("Avg ")[-1]
         self.avg_buffer = np.zeros((int(avg_setting),2))
+
+        if self.spot_label.currentText() == "CoM Fit":
+            self.fitting_algorithm = com 
+        elif self.spot_label.currentText() == "Gaussian Fit":
+            self.fitting_algorithm = gaussian
+        else:
+            print("[Warning] Unknown Fitting Algorithm")
 
 
     def apply_vmin(self, value):
