@@ -19,6 +19,8 @@ from Capture import capture
 from Execute import execute, execute_monitoring
 import cameras
 from fitting import gaussian, com, _fourier_filtering
+from qhy import QhyCam
+from allied import AlliedCam
 
 import pyqtgraph as pg
 
@@ -73,7 +75,7 @@ class WidgetGallery(QDialog):
         self.spot_y = 0
         self.pos_x = None
         self.pos_y = None
-        self.fitting_algorithm = gaussian
+        self.fitting_algorithm = None
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -139,7 +141,7 @@ class WidgetGallery(QDialog):
 
         #self.spot_label = QLabel("Spot Position: ")
         self.spot_label = QComboBox()
-        self.spot_label.addItems(["CoM Fit", "Gaussian Fit"])
+        self.spot_label.addItems(["None", "CoM Fit", "Gaussian Fit"])
         self.spot_position = QLabel("?, ?")
         self.spot_delta = QLabel("")
         layout.addWidget(self.spot_label, 3, 0)
@@ -234,7 +236,10 @@ class WidgetGallery(QDialog):
 
             self.view[self.view==np.max(self.view)] = 0
             self.view[self.view<0.1*np.max(self.view)] = 0
-            self.view = _fourier_filtering(self.view, radius=25)
+            if type(cam) == QhyCam:
+                self.view = _fourier_filtering(self.view, radius=20)
+            elif type(cam) == AlliedCam:
+                self.view = _fourier_filtering(self.view, radius=25)
             
             self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
@@ -251,28 +256,29 @@ class WidgetGallery(QDialog):
             # sleep(interval)
 
             # find the spot
-            self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
-            self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-            if self.pos_x is not None and self.pos_y is not None:
-                self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
-            ax = self.canvas.getView()
-            try:
-                ax.removeItem(self.spot_mark1)
-                ax.removeItem(self.spot_mark2)
-            except AttributeError:
-                pass
-            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
-            ax.addItem(self.spot_mark1)
-            ax.addItem(self.spot_mark2)
+            if callable(self.fitting_algorithm):
+                self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
+                self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+                if self.pos_x is not None and self.pos_y is not None:
+                    self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+                ax = self.canvas.getView()
+                try:
+                    ax.removeItem(self.spot_mark1)
+                    ax.removeItem(self.spot_mark2)
+                except AttributeError:
+                    pass
+                self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+                self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+                ax.addItem(self.spot_mark1)
+                ax.addItem(self.spot_mark2)
 
-            if self.avg_buffer_pointer >= self.avg_buffer.shape[0]:
-                self.avg_buffer_pointer = 0
-            self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
-            self.avg_buffer_pointer += 1
-            self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
-            if self.pos_x is not None and self.pos_y is not None:
-                self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
+                if self.avg_buffer_pointer >= self.avg_buffer.shape[0]:
+                    self.avg_buffer_pointer = 0
+                self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
+                self.avg_buffer_pointer += 1
+                self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
+                if self.pos_x is not None and self.pos_y is not None:
+                    self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
 
 
     def Apply(self):
@@ -300,6 +306,8 @@ class WidgetGallery(QDialog):
             self.fitting_algorithm = com 
         elif self.spot_label.currentText() == "Gaussian Fit":
             self.fitting_algorithm = gaussian
+        elif self.spot_label.currentText() == "None":
+            self.fitting_algorithm = None
         else:
             print("[Warning] Unknown Fitting Algorithm")
 
