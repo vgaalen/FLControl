@@ -227,10 +227,7 @@ class QhyCam:
             "data size =", int(w.value * h.value * b.value * c.value / 8))
         print("data =", imgdata[100000])
 
-        if self.roi:
-            return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0][1500:1500+self.height,4250:4250+self.width]
-        else:
-            return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
+        return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
 
     def getImages(self, nframes):
         buffer = np.zeros((nframes, self.height, self.width))
@@ -294,12 +291,12 @@ class QhyCam:
         if roi=="0":
             self.roi = False
             self.height, self.width = self.chipH, self.chipW
-        elif roi=="1":
-            self.roi = True
-            self.height, self.width = 500, 500
+            self.interface.SetQHYCCDResolution(self.camhandle,0,0,self.chipH,self.chipW)
         else:
-            print("[Warning] ROI can only be switched on and off for this camera using inputs '0' and '1'")
-            return False
+            x0,y0,w,h=roi.split(',')
+            self.interface.SetQHYCCDResolution(self.camhandle,int(x0),int(y0),int(w),int(h))
+            self.height,self.width=int(h),int(w)
+            self.roi = roi
         return True
 
     def setMode(self, hdr_mode):
