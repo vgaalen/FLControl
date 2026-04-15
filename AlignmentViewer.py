@@ -350,8 +350,9 @@ class WidgetGallery(QDialog):
         if program == "Monitoring":
             self.capture_status.setText("Recording")
             self.updateProgressBar(itt=0)
-            self.program_loop = ContinuousCapture(execute_monitoring, [self.cam])
-            self.program_loop.start_thread()
+            # self.program_loop = ContinuousCapture(execute_monitoring, [self.cam])
+            # self.program_loop.start_thread()
+            execute_monitoring(self.cam)
         if program == "Runplan":
             self.capture_status.setText("Recording")
             self.updateProgressBar(itt=0)
