@@ -126,7 +126,7 @@ class AlliedCam:
     def getFps(self):
         pass
     def getExptime(self):
-        return self.exptime.get()
+        return self.exptime.get()/1000
 
     def getGain(self):
         pass
@@ -144,7 +144,7 @@ class AlliedCam:
     def setFps(self, fps):
         pass
     def setExptime(self, exptime):
-        self.exptime.set(exptime)
+        self.exptime.set(exptime*1000)
 
     def setGain(self, gain):
         pass

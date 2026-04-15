@@ -244,7 +244,7 @@ class QhyCam:
 
     def getExptime(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value)
-        return ret
+        return ret/1000
 
     def getGain(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value)
@@ -273,7 +273,7 @@ class QhyCam:
         return False
 
     def setExptime(self, exptime):
-        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, float(exptime))
+        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, float(exptime*1000))
         if ret == 0:
             return True
         return False
