@@ -19,12 +19,14 @@ class ContinuousCapture:
         self.capture = capture_function
         self.running = False
         self.loop = None
-        self.fun_args = arguments
+        self.fun_args = function_arguments
 
     def start_thread(self):
         self.running = True
-        self.loop = threading.Thread(target=self.loop, args=(self.fun_args))  # , args = (interval))
-        self.loop.start()
+        self.capture(*self.fun_args)
+        #self.loop = threading.Thread(target=self.loop, args=(self.fun_args))  # , args = (interval))
+        #self.loop.start()
+        # ToDo fix the loop
 
     def stop_thread(self):
         self.running = False
