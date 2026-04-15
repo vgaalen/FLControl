@@ -241,7 +241,7 @@ class QhyCam:
 
     def getExptime(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value)
-        return ret/1000
+        return float(ret)/1000
 
     def getGain(self):
         ret = self.interface.GetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value)
@@ -270,7 +270,7 @@ class QhyCam:
         return False
 
     def setExptime(self, exptime):
-        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, float(exptime*1000))
+        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_EXPOSURE.value, float(exptime)*1000)
         if ret == 0:
             return True
         return False
@@ -294,9 +294,10 @@ class QhyCam:
             self.interface.SetQHYCCDResolution(self.camhandle,0,0,self.chipH,self.chipW)
         else:
             x0,y0,w,h=roi.split(',')
-            self.interface.SetQHYCCDResolution(self.camhandle,int(x0),int(y0),int(w),int(h))
-            self.height,self.width=int(h),int(w)
-            self.roi = roi
+            x0,y0,w,h=int(x0),int(y0),int(w),int(h)
+            self.interface.SetQHYCCDResolution(self.camhandle,x0,y0,w,h)
+            self.height,self.width=h,w
+            self.roi = [x0,y0,w,h]
         return True
 
     def setMode(self, hdr_mode):
