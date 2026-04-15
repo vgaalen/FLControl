@@ -236,6 +236,7 @@ class WidgetGallery(QDialog):
 
             self.view[self.view==np.max(self.view)] = 0
             self.view[self.view<0.1*np.max(self.view)] = 0
+
             if type(cam) == QhyCam:
                 self.view = _fourier_filtering(self.view, radius=20)
             elif type(cam) == AlliedCam:
@@ -399,9 +400,10 @@ if __name__ == '__main__':
         print("Loaded Vimba Interface")
         with interface:
             cams = interface.get_all_cameras()
-            for cam in cams:
-                print(cam)
-            cam = cams[0]
+            for i, cam in enumerate(cams):
+                print(i, cam)
+            index = int(input())
+            cam = cams[index]
             print("Loading Camera")
             with cam:
                 print("Camera Loaded")
