@@ -162,6 +162,7 @@ class QhyCam:
         print("GetQHYCCDChipInfo() pixel info =", pixelW.value, "x", pixelH.value, "um")
         print("GetQHYCCDChipInfo() image info =", imageW.value, "x", imageH.value, imageB.value, "bits")
         self.width, self.height = imageW.value, imageH.value
+        self.chipW, self.chipH = imageW.value, imageH.value
 
         ret = self.interface.SetQHYCCDBinMode(self.camhandle, 1, 1)
         #print("SetQHYCCDBinMode() ret =", ret)
@@ -183,6 +184,7 @@ class QhyCam:
 
         self.Shutters = {'N/A': 0}
         self.Modes = {'N/A': 0}
+        self.roi = False
         self.getImage()
 
     def Start(self):
@@ -224,7 +226,11 @@ class QhyCam:
         print("GetQHYCCDSingleFrame() ret =", ret, "w =", w.value, "h =", h.value, "b =", b.value, "c =", c.value,
             "data size =", int(w.value * h.value * b.value * c.value / 8))
         print("data =", imgdata[100000])
-        return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
+
+        if self.roi:
+            return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0][1500:1500+self.height,4250:4250+self.width]
+        else:
+            return np.frombuffer(imgdata, dtype=np.uint16).reshape(-1,self.height,self.width)[0]
 
     def getImages(self, nframes):
         buffer = np.zeros((nframes, self.height, self.width))
@@ -252,7 +258,7 @@ class QhyCam:
         return " "
 
     def getRoi(self):
-        return "Not Supported"
+        return self.roi
 
     def getShutter(self):
         return "Not Supported"
@@ -285,8 +291,16 @@ class QhyCam:
         return False
 
     def setRoi(self, roi):
-        print("[Warning] Changing the Region of Interest is not supported")
-        return False
+        if roi=="0":
+            self.roi = False
+            self.height, self.width = self.chipH, self.chipW
+        elif roi=="1":
+            self.roi = True
+            self.height, self.width = 500, 500
+        else:
+            print("[Warning] ROI can only be switched on and off for this camera using inputs '0' and '1'")
+            return False
+        return True
 
     def setMode(self, hdr_mode):
         print("[Warning] Changing the HDR-mode is not supported")
