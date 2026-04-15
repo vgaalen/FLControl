@@ -351,10 +351,12 @@ class WidgetGallery(QDialog):
             self.capture_status.setText("Recording")
             self.updateProgressBar(itt=0)
             self.program_loop = ContinuousCapture(execute_monitoring, [self.cam])
+            self.program_loop.start_thread()
         if program == "Runplan":
             self.capture_status.setText("Recording")
             self.updateProgressBar(itt=0)
             self.program_loop = ProgrammedCapture(cam, progress_func=self.updateProgressBar, exit_status_func=self.capture_status.setText)
+            self.program_loop.start_thread()
 
     def auto_scale(self):
         print("set scale")
