@@ -78,6 +78,7 @@ class WidgetGallery(QDialog):
         self.fitting_algorithm = None
         self.filtering_state = False
         self.program_loop = None
+        self.roi_status = None
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -255,14 +256,18 @@ class WidgetGallery(QDialog):
             self.shutter.output.setText(str(self.cam.getShutter()))
             self.mode.output.setText(str(self.cam.getMode()))
             self.roi.output.setText(str(self.cam.getRoi()))
+            self.roi_status = self.cam.getRoi()
             # sleep(interval)
 
             # find the spot
             if callable(self.fitting_algorithm):
                 self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
-                self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+                if type(self.roi_status) is list:
+                    self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
+                else:
+                    self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
                 if self.pos_x is not None and self.pos_y is not None:
-                    self.spot_delta.setText(str(self.spot_x-self.pos_x)+", "+str(self.spot_y-self.pos_y))
+                    self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
                 ax = self.canvas.getView()
                 try:
                     ax.removeItem(self.spot_mark1)
@@ -372,8 +377,12 @@ class WidgetGallery(QDialog):
             ax.removeItem(self.target_mark2)
         except AttributeError:
             pass
-        self.target_mark1 = pg.PlotCurveItem(x=[self.pos_x,self.pos_x], y=[0, self.cam.height-1], pen='red')
-        self.target_mark2 = pg.PlotCurveItem(x=[0,self.cam.width-1], y=[self.pos_y, self.pos_y], pen='red')
+        if type(self.roi_status) is list:
+            self.target_mark1 = pg.PlotCurveItem(x=[self.pos_x-self.roi_status[0],self.pos_x-self.roi_status[0]], y=[0, self.cam.height-1], pen='red')
+            self.target_mark2 = pg.PlotCurveItem(x=[0,self.cam.width-1], y=[self.pos_y-self.roi_status[1], self.pos_y-self.roi_status[1]], pen='red')
+        else:
+            self.target_mark1 = pg.PlotCurveItem(x=[self.pos_x,self.pos_x], y=[0, self.cam.height-1], pen='red')
+            self.target_mark2 = pg.PlotCurveItem(x=[0,self.cam.width-1], y=[self.pos_y, self.pos_y], pen='red')
         ax.addItem(self.target_mark1)
         ax.addItem(self.target_mark2)
 
