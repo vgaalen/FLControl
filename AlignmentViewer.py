@@ -261,8 +261,8 @@ class WidgetGallery(QDialog):
                 ax.removeItem(self.spot_mark2)
             except AttributeError:
                 pass
-            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='#00bfff')
+            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='#00bfff')
             ax.addItem(self.spot_mark1)
             ax.addItem(self.spot_mark2)
 
