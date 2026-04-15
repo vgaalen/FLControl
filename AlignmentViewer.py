@@ -234,7 +234,7 @@ class WidgetGallery(QDialog):
 
             self.view[self.view==np.max(self.view)] = 0
             self.view[self.view<0.1*np.max(self.view)] = 0
-            self.view = _fourier_filtering(self.view, radius=25)
+            #self.view = _fourier_filtering(self.view, radius=25)
             
             self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
             self.mean_value.setText(str(np.mean(self.view)))
@@ -261,8 +261,8 @@ class WidgetGallery(QDialog):
                 ax.removeItem(self.spot_mark2)
             except AttributeError:
                 pass
-            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+            self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='#00bfff')
+            self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='#00bfff')
             ax.addItem(self.spot_mark1)
             ax.addItem(self.spot_mark2)
 
@@ -391,9 +391,10 @@ if __name__ == '__main__':
         print("Loaded Vimba Interface")
         with interface:
             cams = interface.get_all_cameras()
-            for cam in cams:
-                print(cam)
-            cam = cams[0]
+            for i, cam in enumerate(cams):
+                print(i, cam)
+            index = int(input())
+            cam = cams[index]
             print("Loading Camera")
             with cam:
                 print("Camera Loaded")
