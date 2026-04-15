@@ -16,7 +16,7 @@ from typing import Optional, Literal
 plt.ion()
 
 from Capture import capture
-from Execute import execute, execute_monitoring
+from Execute import execute_monitoring, ContinuousCapture, ProgrammedCapture
 import cameras
 from fitting import gaussian, com, _fourier_filtering
 from qhy import QhyCam
@@ -76,6 +76,8 @@ class WidgetGallery(QDialog):
         self.pos_x = None
         self.pos_y = None
         self.fitting_algorithm = None
+        self.filtering_state = False
+        self.program_loop = None
 
         self.originalPalette = QApplication.palette()
         self.createViewGroupBox()
@@ -105,39 +107,29 @@ class WidgetGallery(QDialog):
 
     def createViewGroupBox(self):
         self.ViewGroupBox = QGroupBox("Live Viewer")
-
-        # self.figure = Figure(figsize=(5, 3))
-        # self.canvas = FigureCanvas(self.figure)
-        # self.ax = self.figure.subplots()
-        # self.vmin = 0
-        # self.vmax = 100
-        # cmap = self.ax.imshow(np.zeros((100, 100)), vmin=self.vmin, vmax=self.vmax)
-        # self.cbar = self.figure.colorbar(cmap, ax=self.ax)
-        # # self.figure.show(block=False)
-
         self.canvas = pg.ImageView()
         self.canvas.setImage(self.view)
 
-        self.mean_label = QLabel("Mean Pixel Value")
-        self.mean_value = QLabel("?")
-
-        self.frame_label = QLabel("Frame Counter")
-        self.frame_value = QLabel("0")
+        self.mean_value = QLabel("Mean Value: ?")
+        self.frame_counter = QLabel("Frame Counter: 0")
 
         self.auto_scale_button = QPushButton("Auto Scale")
         self.auto_scale_button.setDefault(True)
         self.auto_scale_button.clicked.connect(self.auto_scale)
 
+        self.filtering_button = QPushButton("Filtering: Off")
+        self.filtering_button.setDefault(False)
+        self.filtering_button.clicked.connect(self.toggle_filtering)
+
         layout = QGridLayout()
-        layout.addWidget(self.canvas, 0, 0, 1, 5)
-        layout.addWidget(self.mean_label, 1, 0)
-        layout.addWidget(self.mean_value, 1, 1)
-        layout.addWidget(self.frame_label, 1, 2)
-        layout.addWidget(self.frame_value, 1, 3)
-        layout.addWidget(self.auto_scale_button, 1, 4)
+        layout.addWidget(self.canvas, 0, 0, 1, 3)
+        layout.addWidget(self.mean_value, 1, 0)
+        layout.addWidget(self.frame_counter, 1, 1)
+        #layout.addWidget(self.auto_scale_button, 1, 2)
+        layout.addWidget(self.filtering_button, 1, 2)
 
         self.target_position = CtrlGroup("Target Position 'x,y'", layout, 2, default="")
-        self.target_apply = ButtonGroup("Set", self.add_target, layout, (2,2,1,3))
+        self.target_apply = ButtonGroup("Set", self.add_target, layout, (2,2,1,1))
 
         #self.spot_label = QLabel("Spot Position: ")
         self.spot_label = QComboBox()
@@ -146,7 +138,7 @@ class WidgetGallery(QDialog):
         self.spot_delta = QLabel("")
         layout.addWidget(self.spot_label, 3, 0)
         layout.addWidget(self.spot_position, 3, 1)
-        layout.addWidget(self.spot_delta, 3, 2, 1, 3)
+        layout.addWidget(self.spot_delta, 3, 2, 1, 1)
 
         # Avg spot position
         self.avg_selector = QComboBox()
@@ -157,7 +149,7 @@ class WidgetGallery(QDialog):
         self.avg_buffer_pointer = 0
         layout.addWidget(self.avg_selector, 4, 0)
         layout.addWidget(self.avg_abs, 4, 1)
-        layout.addWidget(self.avg_delta, 4, 2, 1, 3)
+        layout.addWidget(self.avg_delta, 4, 2, 1, 1)
 
         layout.setRowStretch(0, 1)
         self.ViewGroupBox.setLayout(layout)
@@ -167,15 +159,15 @@ class WidgetGallery(QDialog):
 
         layout = QGridLayout()
         self.temp = CtrlGroup("Sensor Temperature", layout, 0)
-        self.fps = CtrlGroup("FPS", layout, 1)
-        self.exptime = CtrlGroup("Exposure Time", layout, 2)
+        self.fps = CtrlGroup("Framerate [Hz]", layout, 1)
+        self.exptime = CtrlGroup("Exposure Time [ms]", layout, 2)
         self.gain = CtrlGroup("Gain", layout, 3)
         self.mode = CtrlGroup("Readout Mode", layout, 4, type="ComboBox", options=list(self.cam.Modes.keys()))
         self.shutter = CtrlGroup("Shutter Mode", layout, 5, type="ComboBox", options=list(self.cam.Shutters.keys()))
         self.roi = CtrlGroup("Region of Interest", layout, 6)
 
-        self.vmin_slider = SliderGroup("vmin", (0,20000),self.ControlGroupBox,layout,7,0,self.apply_vmin)
-        self.vmax_slider = SliderGroup("vmax", (0,20000), self.ControlGroupBox, layout, 8, 10000, self.apply_vmax)
+        #self.vmin_slider = SliderGroup("vmin", (0,20000),self.ControlGroupBox,layout,7,0,self.apply_vmin)
+        #self.vmax_slider = SliderGroup("vmax", (0,20000), self.ControlGroupBox, layout, 8, 10000, self.apply_vmax)
 
         self.apply_button = ButtonGroup("Apply", self.Apply, layout, (9,1))
         self.start_button = ButtonGroup("Start", self.Start, layout, (9,0))
@@ -190,9 +182,16 @@ class WidgetGallery(QDialog):
         self.nframes = CtrlGroup("# of Frames", layout, 1)
         self.filename = CtrlGroup("Write to File", layout, 2, default=f"{datetime.now():%Y%m%d-%H%M%S}.fits")
         self.capture_button = ButtonGroup("Capture", self.Capture, layout, (3,1))
-        self.execute_button = ButtonGroup("Execute", self.Execute, layout, (3,0))
         self.capture_status = QLabel(" ")
         layout.addWidget(self.capture_status, 3, 2)
+
+        self.program_label = QLabel("Run Program")
+        layout.addWidget(self.program_label, 4, 0)
+        self.program_selector = QComboBox()
+        self.program_selector.addItems(["Monitoring", "Runplan"])
+        layout.addWidget(self.program_selector, 4, 1)
+        self.program_button = ButtonGroup("Execute", self.Execute_program, layout, (4, 2))
+
         self.CaptureGroupBox.setLayout(layout)
 
     def createProgressBar(self):
@@ -215,12 +214,13 @@ class WidgetGallery(QDialog):
 
     def Stop(self):
         self.running = False
+        if type(self.program_loop) is ContinuousCapture:
+            self.program_loop.stop_thread()
         self.cam.Stop()
 
     def Shutdown(self):
         self.Stop()
         self.cam.shutdown()
-        self.running = False
         self.loop.join(timeout=60)
         self.close()
 
@@ -237,14 +237,15 @@ class WidgetGallery(QDialog):
             self.view[self.view==np.max(self.view)] = 0
             self.view[self.view<0.1*np.max(self.view)] = 0
 
-            if type(cam) == QhyCam:
-                self.view = _fourier_filtering(self.view, radius=20)
-            elif type(cam) == AlliedCam:
-                self.view = _fourier_filtering(self.view, radius=25)
+            if self.filtering_state:
+                if type(cam) == QhyCam:
+                    self.view = _fourier_filtering(self.view, radius=20)
+                elif type(cam) == AlliedCam:
+                    self.view = _fourier_filtering(self.view, radius=25)
             
             self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
-            self.mean_value.setText(str(np.mean(self.view)))
-            self.frame_value.setText(str(self.frameCounter))
+            self.mean_value.setText(f"Mean Value: {np.mean(self.view):.1f}")
+            self.frame_counter.setText(f"Frame Counter: {self.frameCounter}")
 
             # fetch camera metadata
             self.temp.output.setText(str(self.cam.getTemp()))
@@ -313,13 +314,13 @@ class WidgetGallery(QDialog):
             print("[Warning] Unknown Fitting Algorithm")
 
 
-    def apply_vmin(self, value):
-        self.vmin = value
-        self.vmin_slider.output.setText(f"{value}")
-
-    def apply_vmax(self, value):
-        self.vmax = value
-        self.vmax_slider.output.setText(f"{value}")
+    # def apply_vmin(self, value):
+    #     self.vmin = value
+    #     self.vmin_slider.output.setText(f"{value}")
+    #
+    # def apply_vmax(self, value):
+    #     self.vmax = value
+    #     self.vmax_slider.output.setText(f"{value}")
 
     def Capture(self):
         self.capture_status.setText("Recording")
@@ -339,17 +340,16 @@ class WidgetGallery(QDialog):
             self.capture_status.setText("Failed")
             print(f"Nframes has to be an integer: {nframes}")
 
-    def Execute(self):
-        self.capture_status.setText("Recording")
-        self.updateProgressBar(itt=0)
-        try:
-            # res = execute(self.cam)
-            thread = threading.Thread(target=execute_monitoring, args=[self.cam],
-                                               kwargs={'progress_func': self.updateProgressBar,
-                                                       'exit_status_func': self.capture_status.setText})
-            thread.start()
-        except ValueError:
-            self.capture_status.setText("Failed")
+    def Execute_program(self):
+        program = self.program_selector.currentText()
+        if program == "Monitoring":
+            self.capture_status.setText("Recording")
+            self.updateProgressBar(itt=0)
+            self.program_loop = ContinuousCapture(execute_monitoring, [self.cam])
+        if program == "Runplan":
+            self.capture_status.setText("Recording")
+            self.updateProgressBar(itt=0)
+            self.program_loop = ProgrammedCapture(cam, progress_func=self.updateProgressBar, exit_status_func=self.capture_status.setText)
 
     def auto_scale(self):
         print("set scale")
@@ -381,6 +381,14 @@ class WidgetGallery(QDialog):
         #     self.canvas.draw()
         # except:
         #     pass
+
+    def toggle_filtering(self):
+        if self.filtering_state:
+            self.filtering_state = False
+            self.filtering_button.setText("Filtering: Off")
+        else:
+            self.filtering_state = True
+            self.filtering_button.setText("Filtering: On")
 
 
 if __name__ == '__main__':
