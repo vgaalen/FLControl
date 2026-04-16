@@ -266,7 +266,7 @@ class WidgetGallery(QDialog):
                     self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
                 else:
                     self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-                if self.pos_x is not None and self.pos_y is not None:
+                if self.pos_x is not None and self.pos_y is not None and type(self.roi_status) is list:
                     self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
                 ax = self.canvas.getView()
                 try:
