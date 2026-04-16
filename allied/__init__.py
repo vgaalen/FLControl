@@ -144,7 +144,7 @@ class AlliedCam:
     def setFps(self, fps):
         pass
     def setExptime(self, exptime):
-        self.exptime.set(exptime*1000)
+        self.exptime.set(float(exptime)*1000)
 
     def setGain(self, gain):
         pass
