@@ -287,7 +287,10 @@ class WidgetGallery(QDialog):
                     self.avg_buffer_pointer = 0
                 self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
                 self.avg_buffer_pointer += 1
-                self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
+                if type(self.roi_status) is list:
+                    self.avg_abs.setText(f"{np.mean(self.avg_buffer[:, 0])+self.roi_status[0]}, {np.mean(self.avg_buffer[:, 1])+self.roi_status[1]}")
+                else:
+                    self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
                 if self.pos_x is not None and self.pos_y is not None:
                     if type(self.roi_status) is list:
                         self.avg_delta.setText(
