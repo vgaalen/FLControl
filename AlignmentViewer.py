@@ -266,8 +266,12 @@ class WidgetGallery(QDialog):
                     self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
                 else:
                     self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-                if self.pos_x is not None and self.pos_y is not None and type(self.roi_status) is list:
-                    self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
+                if self.pos_x is not None and self.pos_y is not None:
+                    if type(self.roi_status) is list:
+                        self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
+                    else:
+                        self.spot_delta.setText(str(self.spot_x - self.pos_x) + ", " + str(self.spot_y-self.pos_y))
+
                 ax = self.canvas.getView()
                 try:
                     ax.removeItem(self.spot_mark1)
@@ -285,7 +289,11 @@ class WidgetGallery(QDialog):
                 self.avg_buffer_pointer += 1
                 self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
                 if self.pos_x is not None and self.pos_y is not None:
-                    self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
+                    if type(self.roi_status) is list:
+                        self.avg_delta.setText(
+                            f"{np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
+                    else:
+                        self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
 
 
     def Apply(self):
