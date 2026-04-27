@@ -12,6 +12,7 @@ import threading
 from time import sleep
 from datetime import datetime
 from typing import Optional, Literal
+import warnings
 
 plt.ion()
 
@@ -189,7 +190,7 @@ class WidgetGallery(QDialog):
         self.program_label = QLabel("Run Program")
         layout.addWidget(self.program_label, 4, 0)
         self.program_selector = QComboBox()
-        self.program_selector.addItems(["Monitoring", "Runplan"])
+        self.program_selector.addItems(["Monitoring", "Runplan", "Capture10"])
         layout.addWidget(self.program_selector, 4, 1)
         self.program_button = ButtonGroup("Execute", self.Execute_program, layout, (4, 2))
 
@@ -365,11 +366,13 @@ class WidgetGallery(QDialog):
             # self.program_loop.start_thread()
             thread = threading.Thread(target=execute_monitoring, args=[self.cam])
             thread.start()
-        if program == "Runplan":
+        elif program == "Runplan":
             self.capture_status.setText("Recording")
             self.updateProgressBar(itt=0)
             self.program_loop = ProgrammedCapture(cam, progress_func=self.updateProgressBar, exit_status_func=self.capture_status.setText)
             self.program_loop.start_thread()
+        elif program == "Capture10":
+            capture(self.cam, 10)
 
     def auto_scale(self):
         print("set scale")
@@ -418,6 +421,7 @@ class WidgetGallery(QDialog):
 if __name__ == '__main__':
     import sys
     print("Starting AlignmentViewer")
+    warnings.filterwarnings("ignore", message="QBasicTimer::start: Timers cannot be started from another thread")
 
     res = int(input("""Choose the camera type: 
     1: Demo
