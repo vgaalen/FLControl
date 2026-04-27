@@ -276,7 +276,7 @@ class QhyCam:
         return False
 
     def setGain(self, gain):
-        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value, 50.0)
+        ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CONTROL_GAIN.value, float(gain))
         if ret == 0:
             return True
         else:
