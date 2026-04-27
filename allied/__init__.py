@@ -21,6 +21,12 @@ class AlliedCam:
                 self.temp_setpoint = feat 
             elif feat.get_name() == "ExposureTime":
                 self.exptime = feat
+            elif feat.get_name() == "AcquisitionFrameRate":
+                self.fps = feat
+            elif feat.get_name() == "Gain":
+                self.gain = feat
+            elif feat.get_name() == "SensorGain":
+                self.gain2 = feat
             # "SensorTemperatureControlState"  "stable"
 
 #             /// Feature name   : LUTSelector
@@ -124,30 +130,32 @@ class AlliedCam:
 # return np.reshape(np.concatenate((fst_uint12[:, None], snd_uint12[:, None]), axis=1), 2 * fst_uint12.shape[0])
 
     def getFps(self):
-        pass
+        return self.fps.get()
     def getExptime(self):
         return self.exptime.get()/1000
-
     def getGain(self):
-        pass
+        return f"{self.gain.get()} dB"
     def getTemp(self):
         # DeviceTemperature
         return self.temp.get()
     def getTempSetpoint(self):
-        return f"{self.temp_setpoint.get()}, {self.temp_sel.get()}"
+        return f"{self.temp_setpoint.get()}"
     def getRoi(self):
         pass
     def getShutter(self):
         pass
     def getMode(self):
         pass
-    def setFps(self, fps):
-        pass
-    def setExptime(self, exptime):
-        self.exptime.set(float(exptime)*1000)
 
+    def setFps(self, fps):
+        self.fps.set(float(fps))
+    def setExptime(self, exptime):
+        exptime = float(exptime)
+        if exptime > 1000/self.fps.get():
+            self.setFps(1000/exptime)
+        self.exptime.set(float(exptime)*1000)
     def setGain(self, gain):
-        pass
+        self.gain.set(float(gain))
     def setTemp(self, temp):
         pass
     def setRoi(self, roi):
