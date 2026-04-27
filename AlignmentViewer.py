@@ -182,6 +182,7 @@ class WidgetGallery(QDialog):
         self.CaptureGroupBox = QGroupBox("Control Panel")
         layout = QGridLayout()
         self.nframes = CtrlGroup("# of Frames", layout, 1)
+        self.nframes.output.setText(" ")
         self.filename = CtrlGroup("Write to File", layout, 2, default=f"{datetime.now():%Y%m%d-%H%M%S}.fits")
         self.capture_button = ButtonGroup("Capture", self.Capture, layout, (3,1))
         self.capture_status = QLabel(" ")
@@ -345,7 +346,7 @@ class WidgetGallery(QDialog):
         file = self.filename.input.text()
         self.updateProgressBar(itt=0, range=nframes)
         try:
-            res = capture(self.cam, nframes, self.updateProgressBar, file=file)
+            res = capture(self.cam, nframes, file=file)
             if res == 1:
                 self.capture_status.setText("Complete")
                 print("Complete")
