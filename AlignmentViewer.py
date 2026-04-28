@@ -238,7 +238,7 @@ class WidgetGallery(QDialog):
                 pass
 
             self.view[self.view==np.max(self.view)] = 0
-            self.view[self.view<0.1*np.max(self.view)] = 0
+            #self.view[self.view<0.25*np.max(self.view)] = 0
 
             if self.filtering_state:
                 if type(cam) == QhyCam:
@@ -342,6 +342,8 @@ class WidgetGallery(QDialog):
 
     def Capture(self):
         self.capture_status.setText("Recording")
+        if self.running:
+            self.Stop()
         nframes = int(self.nframes.input.text())
         file = self.filename.input.text()
         self.updateProgressBar(itt=0, range=nframes)
@@ -359,6 +361,8 @@ class WidgetGallery(QDialog):
             print(f"Nframes has to be an integer: {nframes}")
 
     def Execute_program(self):
+        if running:
+            self.Stop()
         program = self.program_selector.currentText()
         if program == "Monitoring":
             self.capture_status.setText("Recording")
