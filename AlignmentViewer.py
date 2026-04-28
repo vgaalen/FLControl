@@ -361,7 +361,7 @@ class WidgetGallery(QDialog):
             print(f"Nframes has to be an integer: {nframes}")
 
     def Execute_program(self):
-        if running:
+        if self.running:
             self.Stop()
         program = self.program_selector.currentText()
         if program == "Monitoring":
