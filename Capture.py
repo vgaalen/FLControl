@@ -3,6 +3,8 @@ from datetime import datetime
 import numpy as np
 
 def capture(cam, nframes, file=f"test.fits"):#:%Y%m%d-%H%M%S
+    if file.split(".")[-1]!="fits":
+        file = file+".fits"
     temps = []
     timeStart = datetime.now()
     exptime = cam.getExptime()
