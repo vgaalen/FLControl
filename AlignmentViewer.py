@@ -241,9 +241,9 @@ class WidgetGallery(QDialog):
             #self.view[self.view<0.25*np.max(self.view)] = 0
 
             if self.filtering_state:
-                if type(cam) == QhyCam:
+                if type(self.cam) == QhyCam:
                     self.view = _fourier_filtering(self.view, radius=20)
-                elif type(cam) == AlliedCam:
+                elif type(self.cam) == AlliedCam:
                     self.view = _fourier_filtering(self.view, radius=25)
             
             self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
@@ -263,7 +263,11 @@ class WidgetGallery(QDialog):
 
             # find the spot
             if callable(self.fitting_algorithm):
-                self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
+                if type(self.cam)==QhyCam:
+                    self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=250) #gaussian(self.view)
+                else:
+                    self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
+                
                 if type(self.roi_status) is list:
                     self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
                 else:
