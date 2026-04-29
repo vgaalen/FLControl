@@ -135,7 +135,7 @@ class WidgetGallery(QDialog):
 
         #self.spot_label = QLabel("Spot Position: ")
         self.spot_label = QComboBox()
-        self.spot_label.addItems(["None", "CoM Fit", "Gaussian Fit"])
+        self.spot_label.addItems(["None", "CoM", "Gaussian Fit"])
         self.spot_position = QLabel("?, ?")
         self.spot_delta = QLabel("")
         layout.addWidget(self.spot_label, 3, 0)
@@ -326,7 +326,7 @@ class WidgetGallery(QDialog):
         avg_setting = self.avg_selector.currentText().split("Avg ")[-1]
         self.avg_buffer = np.zeros((int(avg_setting),2))
 
-        if self.spot_label.currentText() == "CoM Fit":
+        if self.spot_label.currentText() == "CoM":
             self.fitting_algorithm = com 
         elif self.spot_label.currentText() == "Gaussian Fit":
             self.fitting_algorithm = gaussian

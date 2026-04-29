@@ -101,6 +101,10 @@ def gaussian_old(img: np.ndarray, p0=None, nulling_limit=0.75):
     else:
         return popt[0], popt[1]
 
-def com(img, img_radius=0):
+def com(img, img_radius=None):
     from scipy.ndimage import center_of_mass
+    if img_radius is not None:
+        ymax, xmax = np.unravel_index(np.argmax(img.flatten()), img.shape)
+        ypos, xpos = center_of_mass(img[ymax-img_radius:ymax+img_radius,xmax-img_radius:xmax+img_radius])
+        return ypos+ymax-img_radius, xpos+xmax-img_radius
     return center_of_mass(img)
