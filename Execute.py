@@ -20,20 +20,26 @@ class ContinuousCapture:
         self.running = False
         self.loop = None
         self.fun_args = function_arguments
+        print("ContinuousCapture Initialized")
 
     def start_thread(self):
+        print("Starting the Thread")
         self.running = True
-        self.capture(*self.fun_args)
-        #self.loop = threading.Thread(target=self.loop, args=(self.fun_args))  # , args = (interval))
-        #self.loop.start()
+        #self.capture(*self.fun_args)
+        self.thread = threading.Thread(target=self.loop)#, args=(self.fun_args))  # , args = (interval))
+        self.thread.start()
+        print("Thread Running", self.running)
         # ToDo fix the loop
 
     def stop_thread(self):
         self.running = False
 
-    def loop(self, fun_args):
+    def loop(self):
+        print("Loop Started")
         while self.running:
-            self.capture(*fun_args)
+            self.capture(*self.fun_args)
+            sleep(60*10)
+        print("Loop Stopped")
 
 
 class ProgrammedCapture:
@@ -118,7 +124,17 @@ def execute_monitoring(cam):
     Path(folder).mkdir(parents=True, exist_ok=True)
     print(folder)
 
+    #while True:
+    print("Capturing 10 frames")
+    capture(cam, 10, file=folder+'/'+f"{datetime.now():%Y%m%d_%H%M%S}"+'.fits')
+    #sleep(10*60)
+
+def execute_monitoring_loop(cam):
+    folder = f"data/{datetime.now():%Y%m%d}"
+    Path(folder).mkdir(parents=True, exist_ok=True)
+    print(folder)
+
     while True:
+        print("Capturing 10 frames")
         capture(cam, 10, file=folder+'/'+f"{datetime.now():%Y%m%d_%H%M%S}"+'.fits')
         sleep(10*60)
-    
