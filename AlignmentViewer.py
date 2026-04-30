@@ -99,6 +99,7 @@ class WidgetGallery(QDialog):
         self.setLayout(mainLayout)
         self.setWindowTitle("FLControl - Live Viewer")
 
+        self.running = False
         self.Start()
         self.running = False
 
