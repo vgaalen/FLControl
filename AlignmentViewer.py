@@ -209,7 +209,7 @@ class WidgetGallery(QDialog):
             self.progressBar.setValue(itt)
 
     def Start(self, interval=1):
-        if not running:
+        if not self.running:
             self.running = True
             self.context = self.cam.Start()
             self.loop = threading.Thread(target=self.Update)
