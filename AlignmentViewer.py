@@ -209,17 +209,19 @@ class WidgetGallery(QDialog):
             self.progressBar.setValue(itt)
 
     def Start(self, interval=1):
-        self.running = True
-        self.context = self.cam.Start()
-        self.loop = threading.Thread(target=self.Update)  # , args = (interval))
-        self.loop.start()
-        # self.Update()
+        if not running:
+            self.running = True
+            self.context = self.cam.Start()
+            self.loop = threading.Thread(target=self.Update)
+            self.loop.start()
+            print("[INFO] Live Viewer Started")
 
     def Stop(self):
         self.running = False
         if type(self.program_loop) is ContinuousCapture:
             self.program_loop.stop_thread()
         self.cam.Stop()
+        print("[INFO] Live Viewer Stopped")
 
     def Shutdown(self):
         self.Stop()
