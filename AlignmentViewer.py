@@ -233,77 +233,76 @@ class WidgetGallery(QDialog):
             try:
                 self.view = self.cam.getImage()
                 self.frameCounter += 1
+            
+                self.view[self.view==np.max(self.view)] = 0
+                #self.view[self.view<0.25*np.max(self.view)] = 0
+
+                if self.filtering_state:
+                    if type(self.cam) == QhyCam:
+                        self.view = _fourier_filtering(self.view, radius=20)
+                    elif type(self.cam) == AlliedCam:
+                        self.view = _fourier_filtering(self.view, radius=25)
+                
+                self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
+                self.mean_value.setText(f"Mean Value: {np.mean(self.view):.1f}")
+                self.frame_counter.setText(f"Frame Counter: {self.frameCounter}")
+
+                # fetch camera metadata
+                self.temp.output.setText(str(self.cam.getTemp()))
+                self.fps.output.setText(str(self.cam.getFps()))
+                self.exptime.output.setText(str(self.cam.getExptime()))
+                self.gain.output.setText(str(self.cam.getGain()))
+                self.shutter.output.setText(str(self.cam.getShutter()))
+                self.mode.output.setText(str(self.cam.getMode()))
+                self.roi.output.setText(str(self.cam.getRoi()))
+                self.roi_status = self.cam.getRoi()
+                # sleep(interval)
+
+                # find the spot
+                if callable(self.fitting_algorithm):
+                    if type(self.cam)==QhyCam:
+                        self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=250) #gaussian(self.view)
+                    else:
+                        self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=100) #gaussian(self.view)
+                    
+                    if type(self.roi_status) is list:
+                        self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
+                    else:
+                        self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+                    if self.pos_x is not None and self.pos_y is not None:
+                        if type(self.roi_status) is list:
+                            self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
+                        else:
+                            self.spot_delta.setText(str(self.spot_x - self.pos_x) + ", " + str(self.spot_y-self.pos_y))
+
+                    ax = self.canvas.getView()
+                    try:
+                        ax.removeItem(self.spot_mark1)
+                        ax.removeItem(self.spot_mark2)
+                    except AttributeError:
+                        pass
+                    self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
+                    self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+                    ax.addItem(self.spot_mark1)
+                    ax.addItem(self.spot_mark2)
+
+                    if self.avg_buffer_pointer >= self.avg_buffer.shape[0]:
+                        self.avg_buffer_pointer = 0
+                    self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
+                    self.avg_buffer_pointer += 1
+                    if type(self.roi_status) is list:
+                        self.avg_abs.setText(f"{np.mean(self.avg_buffer[:, 0])+self.roi_status[0]}, {np.mean(self.avg_buffer[:, 1])+self.roi_status[1]}")
+                    else:
+                        self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
+                    if self.pos_x is not None and self.pos_y is not None:
+                        if type(self.roi_status) is list:
+                            self.avg_delta.setText(
+                                f"{np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
+                        else:
+                            self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
             except Exception as e:
                 print(e)
                 pass
-
-            self.view[self.view==np.max(self.view)] = 0
-            #self.view[self.view<0.25*np.max(self.view)] = 0
-
-            if self.filtering_state:
-                if type(self.cam) == QhyCam:
-                    self.view = _fourier_filtering(self.view, radius=20)
-                elif type(self.cam) == AlliedCam:
-                    self.view = _fourier_filtering(self.view, radius=25)
-            
-            self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
-            self.mean_value.setText(f"Mean Value: {np.mean(self.view):.1f}")
-            self.frame_counter.setText(f"Frame Counter: {self.frameCounter}")
-
-            # fetch camera metadata
-            self.temp.output.setText(str(self.cam.getTemp()))
-            self.fps.output.setText(str(self.cam.getFps()))
-            self.exptime.output.setText(str(self.cam.getExptime()))
-            self.gain.output.setText(str(self.cam.getGain()))
-            self.shutter.output.setText(str(self.cam.getShutter()))
-            self.mode.output.setText(str(self.cam.getMode()))
-            self.roi.output.setText(str(self.cam.getRoi()))
-            self.roi_status = self.cam.getRoi()
-            # sleep(interval)
-
-            # find the spot
-            if callable(self.fitting_algorithm):
-                if type(self.cam)==QhyCam:
-                    self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=250) #gaussian(self.view)
-                else:
-                    self.spot_y, self.spot_x = self.fitting_algorithm(self.view) #gaussian(self.view)
-                
-                if type(self.roi_status) is list:
-                    self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
-                else:
-                    self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
-                if self.pos_x is not None and self.pos_y is not None:
-                    if type(self.roi_status) is list:
-                        self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
-                    else:
-                        self.spot_delta.setText(str(self.spot_x - self.pos_x) + ", " + str(self.spot_y-self.pos_y))
-
-                ax = self.canvas.getView()
-                try:
-                    ax.removeItem(self.spot_mark1)
-                    ax.removeItem(self.spot_mark2)
-                except AttributeError:
-                    pass
-                self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-                self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
-                ax.addItem(self.spot_mark1)
-                ax.addItem(self.spot_mark2)
-
-                if self.avg_buffer_pointer >= self.avg_buffer.shape[0]:
-                    self.avg_buffer_pointer = 0
-                self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
-                self.avg_buffer_pointer += 1
-                if type(self.roi_status) is list:
-                    self.avg_abs.setText(f"{np.mean(self.avg_buffer[:, 0])+self.roi_status[0]}, {np.mean(self.avg_buffer[:, 1])+self.roi_status[1]}")
-                else:
-                    self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
-                if self.pos_x is not None and self.pos_y is not None:
-                    if type(self.roi_status) is list:
-                        self.avg_delta.setText(
-                            f"{np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
-                    else:
-                        self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
-
 
     def Apply(self):
         # change camera settings
@@ -371,9 +370,9 @@ class WidgetGallery(QDialog):
         if program == "Monitoring":
             self.capture_status.setText("Recording")
             self.updateProgressBar(itt=0)
-            # self.program_loop = ContinuousCapture(execute_monitoring, [self.cam])
-            # self.program_loop.start_thread()
-            thread = threading.Thread(target=execute_monitoring, args=[self.cam])
+            #self.program_loop = ContinuousCapture(execute_monitoring, [self.cam])
+            #self.program_loop.start_thread()
+            thread = threading.Thread(target=execute_monitoring_loop, args=[self.cam])
             thread.start()
         elif program == "Runplan":
             self.capture_status.setText("Recording")
