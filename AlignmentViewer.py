@@ -17,7 +17,7 @@ import warnings
 plt.ion()
 
 from Capture import capture
-from Execute import execute_monitoring, ContinuousCapture, ProgrammedCapture
+from Execute import execute_monitoring_loop, ContinuousCapture, ProgrammedCapture
 import cameras
 from fitting import gaussian, com, _fourier_filtering
 from qhy import QhyCam
@@ -303,6 +303,15 @@ class WidgetGallery(QDialog):
                                 f"{np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
                         else:
                             self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
+                else:
+                    try:
+                        ax = self.canvas.getView()
+                        if "self.spot_mark1" in locals():
+                            ax.removeItem(self.spot_mark1)
+                        if "self.spot_mark2" in locals():
+                            ax.removeItem(self.spot_mark2)
+                    except AttributeError:
+                        pass
             except Exception as e:
                 print(e)
                 pass
