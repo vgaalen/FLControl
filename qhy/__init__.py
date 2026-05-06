@@ -185,7 +185,7 @@ class QhyCam:
         self.Shutters = {'N/A': 0}
         self.Modes = {'N/A': 0}
         self.roi = False
-        self.setRoi("4000,3400,2000,1500")
+        self.setRoi("3500,2750,2500,1500")
 
     def Start(self):
         pass
