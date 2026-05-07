@@ -4,6 +4,11 @@ from astropy.modeling.functional_models import Gaussian2D
 from astropy.convolution import convolve, convolve_fft, Gaussian2DKernel
 from astropy.modeling import fitting
 
+import matplotlib.pyplot as plt
+from scipy.fft import fft2, ifft2, fftshift, ifftshift
+
+from PIL import Image
+
 def _eval_gaussian(x, x_0, y_0, A, sigma_x, sigma_y, theta):
     return Gaussian2D.evaluate(x[0], x[1], A, x_0, y_0, sigma_x, sigma_y, theta).flatten()
 
@@ -12,8 +17,9 @@ def _gaussian_filter(img, sigma=250):
     return convolve_fft(img, kernel)
 
 def _fourier_filtering(img, radius=-1):
-    import matplotlib.pyplot as plt
-    from scipy.fft import fft2, ifft2, fftshift, ifftshift
+    if radius < 0:
+        return img
+    
     img_fft = fftshift(fft2(img))
 
     x, y = np.ogrid[:img.shape[1], :img.shape[0]]
@@ -27,16 +33,26 @@ def _fourier_filtering(img, radius=-1):
     return np.real(ifft2(ifftshift(img_fft))).astype(np.float64)
     #return img_fft
 
+def _binning(img, num):
+    return np.array(Image.fromarray(img.astype(np.uint8)).reduce(num))
+
+def binning(arr, num):
+    new_shape = (arr.shape[0] // num, arr.shape[1] // num)
+    shape = (new_shape[0], arr.shape[0] // new_shape[0],
+             new_shape[1], arr.shape[1] // new_shape[1])
+    return arr.reshape(shape).mean(-1).mean(1)
+
 def gaussian(img: np.ndarray, nulling_limit=0.75, img_radius=100):
     if len(img.shape) == 3:
         img = np.median(img, axis=0)
 
     peak = np.unravel_index(np.argmax(img.flatten()), img.shape)
     #if img.size>10000:
-    cropped=True
-    img = img[peak[0]-img_radius:peak[0]+img_radius, peak[1]-img_radius:peak[1]+img_radius]
-    #else:
-    #cropped=False
+    if img_radius is not None and img_radius > 0:
+        cropped=True
+        img = img[peak[0]-img_radius:peak[0]+img_radius, peak[1]-img_radius:peak[1]+img_radius]
+    else:
+        cropped=False
 
     ymax, xmax = np.unravel_index(np.argmax(img.flatten()), img.shape)
     
@@ -53,15 +69,16 @@ def gaussian(img: np.ndarray, nulling_limit=0.75, img_radius=100):
     x_stddev = (np.abs((np.arange(np.shape(img)[0])-ymax)**2*col).sum() / col.sum()) **0.5
     y_stddev = (np.abs((np.arange(np.shape(img)[1])-xmax)**2*rig).sum() / rig.sum()) **0.5
     print(x_stddev, y_stddev)
-    model = Gaussian2D(amplitude=np.max(img), x_mean=xmax, y_mean=ymax, x_stddev=150, y_stddev=150,
-                        bounds={'amplitude': (0, None), 
+    model = Gaussian2D(amplitude=np.max(img), x_mean=xmax, y_mean=ymax, x_stddev=150, y_stddev=150)#,
+                        #bounds={'amplitude': (0, None), 
                                 #'x_mean': (xmax-5, xmax+5), 'y_mean': (ymax-5, ymax+5), 
-                                'x_stddev': (1,None), 'y_stddev': (1,None)})
-    fit = fitting.SimplexLSQFitter()
+                        #        'x_stddev': (0,None), 'y_stddev': (0,None)})
+    #fit = fitting.SimplexLSQFitter()
+    #fit = fitting.LMLSQFitter()
     #fit = fitting.LevMarLSQFitter()
-    #fit = fitting.TRFLSQFitter()
+    fit = fitting.TRFLSQFitter()
     #fit = fitting.DogBoxLSQFitter()
-    out = fit(model, x, y, img, maxiter=1000)
+    out = fit(model, x, y, img, maxiter=500)
 
     print(f"resul: {out.x_mean}, {out.y_mean}, {out.amplitude}, {out.x_stddev}, {out.y_stddev}")
     if cropped:

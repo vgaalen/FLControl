@@ -19,7 +19,7 @@ plt.ion()
 from Capture import capture
 from Execute import execute_monitoring_loop, ContinuousCapture, ProgrammedCapture
 import cameras
-from fitting import gaussian, com, _fourier_filtering
+from fitting import gaussian, com, _fourier_filtering, binning
 from qhy import QhyCam
 from allied import AlliedCam
 
@@ -77,7 +77,7 @@ class WidgetGallery(QDialog):
         self.pos_x = None
         self.pos_y = None
         self.fitting_algorithm = None
-        self.filtering_state = False
+        self.filtering_state = True
         self.program_loop = None
         self.roi_status = None
 
@@ -120,16 +120,19 @@ class WidgetGallery(QDialog):
         self.auto_scale_button.setDefault(True)
         self.auto_scale_button.clicked.connect(self.auto_scale)
 
-        self.filtering_button = QPushButton("Filtering: Off")
-        self.filtering_button.setDefault(False)
-        self.filtering_button.clicked.connect(self.toggle_filtering)
+        # self.filtering_button = QPushButton("Filtering: Off")
+        # self.filtering_button.setDefault(False)
+        # self.filtering_button.clicked.connect(self.toggle_filtering)
+        self.filtering_label = QLabel("Filtering Radius")
+        self.filtering_setting = QLineEdit("-1")
 
         layout = QGridLayout()
         layout.addWidget(self.canvas, 0, 0, 1, 3)
-        layout.addWidget(self.mean_value, 1, 0)
-        layout.addWidget(self.frame_counter, 1, 1)
+        #layout.addWidget(self.mean_value, 1, 0)
+        layout.addWidget(self.frame_counter, 1, 0)
         #layout.addWidget(self.auto_scale_button, 1, 2)
-        layout.addWidget(self.filtering_button, 1, 2)
+        layout.addWidget(self.filtering_label, 1, 1)
+        layout.addWidget(self.filtering_setting, 1, 2)
 
         self.target_position = CtrlGroup("Target Position 'x,y'", layout, 2, default="")
         self.target_apply = ButtonGroup("Set", self.add_target, layout, (2,2,1,1))
@@ -168,6 +171,7 @@ class WidgetGallery(QDialog):
         self.mode = CtrlGroup("Readout Mode", layout, 4, type="ComboBox", options=list(self.cam.Modes.keys()))
         self.shutter = CtrlGroup("Shutter Mode", layout, 5, type="ComboBox", options=list(self.cam.Shutters.keys()))
         self.roi = CtrlGroup("Region of Interest", layout, 6)
+        self.binning = CtrlGroup("Binning", layout, 7, type="ComboBox", options=["1","2","3","4"])
 
         #self.vmin_slider = SliderGroup("vmin", (0,20000),self.ControlGroupBox,layout,7,0,self.apply_vmin)
         #self.vmax_slider = SliderGroup("vmax", (0,20000), self.ControlGroupBox, layout, 8, 10000, self.apply_vmax)
@@ -240,11 +244,15 @@ class WidgetGallery(QDialog):
                 self.view[self.view==np.max(self.view)] = 0
                 #self.view[self.view<0.25*np.max(self.view)] = 0
 
+                num_binning = int(self.binning.input.currentText())
+                if num_binning > 1:
+                    self.view = binning(self.view, num_binning)
+
                 if self.filtering_state:
                     if type(self.cam) == QhyCam:
-                        self.view = _fourier_filtering(self.view, radius=20)
+                        self.view = _fourier_filtering(self.view, radius=float(self.filtering_setting.text()))
                     elif type(self.cam) == AlliedCam:
-                        self.view = _fourier_filtering(self.view, radius=25)
+                        self.view = _fourier_filtering(self.view, radius=float(self.filtering_setting.text()))
                 
                 self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
                 self.mean_value.setText(f"Mean Value: {np.mean(self.view):.1f}")
@@ -264,19 +272,19 @@ class WidgetGallery(QDialog):
                 # find the spot
                 if callable(self.fitting_algorithm):
                     if type(self.cam)==QhyCam:
-                        self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=250) #gaussian(self.view)
+                        self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=None) #gaussian(self.view)
                     else:
                         self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=100) #gaussian(self.view)
                     
                     if type(self.roi_status) is list:
-                        self.spot_position.setText(str(self.spot_x+self.roi_status[0])+", "+str(self.spot_y+self.roi_status[1]))
+                        self.spot_position.setText(str(num_binning*self.spot_x+self.roi_status[0])+", "+str(num_binning*self.spot_y+self.roi_status[1]))
                     else:
-                        self.spot_position.setText(str(self.spot_x)+", "+str(self.spot_y))
+                        self.spot_position.setText(str(num_binning*self.spot_x)+", "+str(num_binning*self.spot_y))
                     if self.pos_x is not None and self.pos_y is not None:
                         if type(self.roi_status) is list:
-                            self.spot_delta.setText(str(self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(self.spot_y+self.roi_status[1]-self.pos_y))
+                            self.spot_delta.setText(str(num_binning*self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(num_binning*self.spot_y+self.roi_status[1]-self.pos_y))
                         else:
-                            self.spot_delta.setText(str(self.spot_x - self.pos_x) + ", " + str(self.spot_y-self.pos_y))
+                            self.spot_delta.setText(str(num_binning*self.spot_x - self.pos_x) + ", " + str(num_binning*self.spot_y-self.pos_y))
 
                     ax = self.canvas.getView()
                     try:
@@ -284,8 +292,10 @@ class WidgetGallery(QDialog):
                         ax.removeItem(self.spot_mark2)
                     except AttributeError:
                         pass
-                    self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, self.cam.height - 1], pen='blue')
-                    self.spot_mark2 = pg.PlotCurveItem(x=[0, self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
+
+                    inv_num_binning = 1/num_binning
+                    self.spot_mark1 = pg.PlotCurveItem(x=[self.spot_x, self.spot_x], y=[0, inv_num_binning*self.cam.height - 1], pen='blue')
+                    self.spot_mark2 = pg.PlotCurveItem(x=[0, inv_num_binning*self.cam.width - 1], y=[self.spot_y, self.spot_y], pen='blue')
                     ax.addItem(self.spot_mark1)
                     ax.addItem(self.spot_mark2)
 
@@ -294,15 +304,15 @@ class WidgetGallery(QDialog):
                     self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
                     self.avg_buffer_pointer += 1
                     if type(self.roi_status) is list:
-                        self.avg_abs.setText(f"{np.mean(self.avg_buffer[:, 0])+self.roi_status[0]}, {np.mean(self.avg_buffer[:, 1])+self.roi_status[1]}")
+                        self.avg_abs.setText(f"{num_binning*np.mean(self.avg_buffer[:, 0])+self.roi_status[0]}, {num_binning*np.mean(self.avg_buffer[:, 1])+self.roi_status[1]}")
                     else:
-                        self.avg_abs.setText(f"{np.mean(self.avg_buffer[:,0])}, {np.mean(self.avg_buffer[:,1])}")
+                        self.avg_abs.setText(f"{num_binning*np.mean(self.avg_buffer[:,0])}, {num_binning*np.mean(self.avg_buffer[:,1])}")
                     if self.pos_x is not None and self.pos_y is not None:
                         if type(self.roi_status) is list:
                             self.avg_delta.setText(
-                                f"{np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
+                                f"{num_binning*np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {num_binning*np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
                         else:
-                            self.avg_delta.setText(f"{np.mean(self.avg_buffer[:,0])-self.pos_x}, {np.mean(self.avg_buffer[:,1])-self.pos_y}")
+                            self.avg_delta.setText(f"{num_binning*np.mean(self.avg_buffer[:,0])-self.pos_x}, {num_binning*np.mean(self.avg_buffer[:,1])-self.pos_y}")
                 else:
                     try:
                         ax = self.canvas.getView()
@@ -415,9 +425,12 @@ class WidgetGallery(QDialog):
             ax.removeItem(self.target_mark2)
         except AttributeError:
             pass
+
+        num_binning = int(self.binning.input.currentText())
+        inv_num_binning = 1/num_binning
         if type(self.roi_status) is list:
-            self.target_mark1 = pg.PlotCurveItem(x=[self.pos_x-self.roi_status[0],self.pos_x-self.roi_status[0]], y=[0, self.cam.height-1], pen='red')
-            self.target_mark2 = pg.PlotCurveItem(x=[0,self.cam.width-1], y=[self.pos_y-self.roi_status[1], self.pos_y-self.roi_status[1]], pen='red')
+            self.target_mark1 = pg.PlotCurveItem(x=[inv_num_binning*(self.pos_x-self.roi_status[0]),inv_num_binning*(self.pos_x-self.roi_status[0])], y=[0, inv_num_binning*self.cam.height-1], pen='red')
+            self.target_mark2 = pg.PlotCurveItem(x=[0,inv_num_binning*self.cam.width-1], y=[inv_num_binning*(self.pos_y-self.roi_status[1]), inv_num_binning*(self.pos_y-self.roi_status[1])], pen='red')
         else:
             self.target_mark1 = pg.PlotCurveItem(x=[self.pos_x,self.pos_x], y=[0, self.cam.height-1], pen='red')
             self.target_mark2 = pg.PlotCurveItem(x=[0,self.cam.width-1], y=[self.pos_y, self.pos_y], pen='red')
