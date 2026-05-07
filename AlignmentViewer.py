@@ -171,7 +171,7 @@ class WidgetGallery(QDialog):
         self.mode = CtrlGroup("Readout Mode", layout, 4, type="ComboBox", options=list(self.cam.Modes.keys()))
         self.shutter = CtrlGroup("Shutter Mode", layout, 5, type="ComboBox", options=list(self.cam.Shutters.keys()))
         self.roi = CtrlGroup("Region of Interest", layout, 6)
-        self.binning = CtrlGroup("Binning", layout, 7, type="ComboBox", options=["1","2","3","4"])
+        self.binning = CtrlGroup("Binning", layout, 7, type="ComboBox", options=["1","2","3","4"], default="")
 
         #self.vmin_slider = SliderGroup("vmin", (0,20000),self.ControlGroupBox,layout,7,0,self.apply_vmin)
         #self.vmax_slider = SliderGroup("vmax", (0,20000), self.ControlGroupBox, layout, 8, 10000, self.apply_vmax)
