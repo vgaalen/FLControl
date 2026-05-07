@@ -185,7 +185,7 @@ class QhyCam:
         self.Shutters = {'N/A': 0}
         self.Modes = {'N/A': 0}
         self.roi = False
-        self.setRoi("3500,2750,2500,1500")
+        self.setRoi("3000,2750,3000,2500")
 
     def Start(self):
         pass
@@ -293,8 +293,23 @@ class QhyCam:
             self.height, self.width = self.chipH, self.chipW
             self.interface.SetQHYCCDResolution(self.camhandle,0,0,self.chipH,self.chipW)
         else:
-            x0,y0,w,h=roi.split(',')
-            x0,y0,w,h=int(x0),int(y0),int(w),int(h)
+            params = roi.split(',')
+            if len(params)==4:
+                x0,y0,w,h = list(map(int, params))
+            elif len(params)==6:
+                x0,y0,w,h,xbin,ybin = list(map(int, params))
+                if xbin==1 and ybin==1:
+                    ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CAM_BIN1X1MODE.value, True)
+                    print("Set 1x1 binning: ", ret)
+                elif xbin==2 and ybin==2:
+                    ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CAM_BIN2X2MODE.value, True)
+                    print("Set 2x2 binning: ", ret)
+                elif xbin==3 and ybin==3:
+                    ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CAM_BIN3X3MODE.value, True)
+                    print("Set 3x3 binning: ", ret)
+                elif xbin==4 and ybin==4:
+                    ret = self.interface.SetQHYCCDParam(self.camhandle, CONTROL_ID.CAM_BIN4X4MODE.value, True)
+                    print("Set 4x4 binning: ", ret)
             self.interface.SetQHYCCDResolution(self.camhandle,x0,y0,w,h)
             self.height,self.width=h,w
             self.roi = [x0,y0,w,h]
