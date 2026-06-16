@@ -277,14 +277,14 @@ class WidgetGallery(QDialog):
                         self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=100) #gaussian(self.view)
                     
                     if type(self.roi_status) is list:
-                        self.spot_position.setText(str(num_binning*self.spot_x+self.roi_status[0])+", "+str(num_binning*self.spot_y+self.roi_status[1]))
+                        self.spot_position.setText(str(np.round(num_binning*self.spot_x+self.roi_status[0],1))+", "+str(np.round(num_binning*self.spot_y+self.roi_status[1],1)))
                     else:
-                        self.spot_position.setText(str(num_binning*self.spot_x)+", "+str(num_binning*self.spot_y))
+                        self.spot_position.setText(str(np.round(num_binning*self.spot_x,1))+", "+str(np.round(num_binning*self.spot_y,1)))
                     if self.pos_x is not None and self.pos_y is not None:
                         if type(self.roi_status) is list:
-                            self.spot_delta.setText(str(num_binning*self.spot_x+self.roi_status[0]-self.pos_x)+", "+str(num_binning*self.spot_y+self.roi_status[1]-self.pos_y))
+                            self.spot_delta.setText(str(np.round(num_binning*self.spot_x+self.roi_status[0]-self.pos_x,1))+", "+str(np.round(num_binning*self.spot_y+self.roi_status[1]-self.pos_y,1)))
                         else:
-                            self.spot_delta.setText(str(num_binning*self.spot_x - self.pos_x) + ", " + str(num_binning*self.spot_y-self.pos_y))
+                            self.spot_delta.setText(str(np.round(num_binning*self.spot_x - self.pos_x,1)) + ", " + str(np.round(num_binning*self.spot_y-self.pos_y,1)))
 
                     ax = self.canvas.getView()
                     try:
@@ -304,15 +304,15 @@ class WidgetGallery(QDialog):
                     self.avg_buffer[self.avg_buffer_pointer] = [self.spot_x, self.spot_y]
                     self.avg_buffer_pointer += 1
                     if type(self.roi_status) is list:
-                        self.avg_abs.setText(f"{num_binning*np.mean(self.avg_buffer[:, 0])+self.roi_status[0]}, {num_binning*np.mean(self.avg_buffer[:, 1])+self.roi_status[1]}")
+                        self.avg_abs.setText(f"{np.round(num_binning*np.mean(self.avg_buffer[:, 0])+self.roi_status[0],1)}, {np.round(num_binning*np.mean(self.avg_buffer[:, 1])+self.roi_status[1],1)}")
                     else:
-                        self.avg_abs.setText(f"{num_binning*np.mean(self.avg_buffer[:,0])}, {num_binning*np.mean(self.avg_buffer[:,1])}")
+                        self.avg_abs.setText(f"{np.round(num_binning*np.mean(self.avg_buffer[:,0]),1)}, {np.round(num_binning*np.mean(self.avg_buffer[:,1]),1)}")
                     if self.pos_x is not None and self.pos_y is not None:
                         if type(self.roi_status) is list:
                             self.avg_delta.setText(
-                                f"{num_binning*np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x}, {num_binning*np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y}")
+                                f"{np.round(num_binning*np.mean(self.avg_buffer[:, 0]) + self.roi_status[0]- self.pos_x,1)}, {np.round(num_binning*np.mean(self.avg_buffer[:, 1]) + self.roi_status[1] - self.pos_y,1)}")
                         else:
-                            self.avg_delta.setText(f"{num_binning*np.mean(self.avg_buffer[:,0])-self.pos_x}, {num_binning*np.mean(self.avg_buffer[:,1])-self.pos_y}")
+                            self.avg_delta.setText(f"{np.round(num_binning*np.mean(self.avg_buffer[:,0])-self.pos_x,1)}, {np.round(num_binning*np.mean(self.avg_buffer[:,1])-self.pos_y,1)}")
                 else:
                     try:
                         ax = self.canvas.getView()
