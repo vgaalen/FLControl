@@ -122,7 +122,7 @@ class DemoCam:
     def setShutter(self, shutter):
         return True
 
-def Start(interface_type: Literal["Demo", "FLI", "QHY", "Allied"], interface=None, cam=None):
+def Start(interface_type: Literal["Demo", "FLI", "QHY", "Allied", "PI"], interface=None, cam=None):
     if interface_type=="Demo":
         return DemoCam()
     elif interface_type=="FLI":
@@ -134,5 +134,8 @@ def Start(interface_type: Literal["Demo", "FLI", "QHY", "Allied"], interface=Non
     elif interface_type=="Allied":
         from allied import AlliedCam
         return AlliedCam(interface, cam)
+    elif interface_type=="PI":
+        from picam import PiCam
+        return PiCam()
     else:
         raise Exception("Invalid input")

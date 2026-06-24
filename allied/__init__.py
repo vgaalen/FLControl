@@ -1,14 +1,15 @@
-import vmbpy
 import ctypes
 import numpy as np
-
 from vmbpy import Camera, Frame, Stream, AllocationMode
 
 class AlliedCam:
     def __init__(self, interface, cam):
+
         self.interface = interface
         self.cam = cam
         self.name = "Allied Vision Goldeye"
+
+        self.img_radius = 100 # for cropping
 
         self.features = self.cam.get_all_features()
         

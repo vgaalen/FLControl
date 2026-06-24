@@ -13,6 +13,7 @@ from time import sleep
 from datetime import datetime
 from typing import Optional, Literal
 import warnings
+import sys
 
 plt.ion()
 
@@ -20,8 +21,6 @@ from Capture import capture
 from Execute import execute_monitoring_loop, ContinuousCapture, ProgrammedCapture
 import cameras
 from fitting import gaussian, com, _fourier_filtering, binning
-from qhy import QhyCam
-from allied import AlliedCam
 
 import pyqtgraph as pg
 
@@ -97,11 +96,12 @@ class WidgetGallery(QDialog):
         mainLayout.setColumnStretch(0, 1)
         mainLayout.setColumnStretch(1, 1)
         self.setLayout(mainLayout)
-        self.setWindowTitle("FLControl - Live Viewer")
+        #self.setWindowTitle("FLControl - Live Viewer")
+        self.setWindowTitle(self.cam.name)
 
         self.running = False
-        self.Start()
-        self.running = False
+        # self.Start()
+        # self.running = False
 
     def advanceProgressBar(self):
         curVal = self.progressBar.value()
@@ -234,8 +234,9 @@ class WidgetGallery(QDialog):
         self.loop.join(timeout=60)
         self.close()
 
-    def Update(self, interval=0.1):
+    def Update(self, interval=1):
         while self.running:
+            sleep(interval)
             # update image
             try:
                 self.view = self.cam.getImage()
@@ -249,10 +250,7 @@ class WidgetGallery(QDialog):
                     self.view = binning(self.view, num_binning)
 
                 if self.filtering_state:
-                    if type(self.cam) == QhyCam:
-                        self.view = _fourier_filtering(self.view, radius=float(self.filtering_setting.text()))
-                    elif type(self.cam) == AlliedCam:
-                        self.view = _fourier_filtering(self.view, radius=float(self.filtering_setting.text()))
+                    self.view = _fourier_filtering(self.view, radius=float(self.filtering_setting.text()))
                 
                 self.canvas.setImage(self.view.T, autoLevels=False, autoRange=False)
                 self.mean_value.setText(f"Mean Value: {np.mean(self.view):.1f}")
@@ -271,10 +269,7 @@ class WidgetGallery(QDialog):
 
                 # find the spot
                 if callable(self.fitting_algorithm):
-                    if type(self.cam)==QhyCam:
-                        self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=None) #gaussian(self.view)
-                    else:
-                        self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=100) #gaussian(self.view)
+                    self.spot_y, self.spot_x = self.fitting_algorithm(self.view, img_radius=self.img_radius) #gaussian(self.view)
                     
                     if type(self.roi_status) is list:
                         self.spot_position.setText(str(np.round(num_binning*self.spot_x+self.roi_status[0],1))+", "+str(np.round(num_binning*self.spot_y+self.roi_status[1],1)))
@@ -450,9 +445,13 @@ class WidgetGallery(QDialog):
             self.filtering_state = True
             self.filtering_button.setText("Filtering: On")
 
+def start_viewer(cam):
+    app = QApplication(sys.argv)
+    gallery = WidgetGallery(cam)
+    gallery.show()
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
-    import sys
     print("Starting AlignmentViewer")
     warnings.filterwarnings("ignore", message="QBasicTimer::start: Timers cannot be started from another thread")
 
@@ -461,6 +460,7 @@ if __name__ == '__main__':
     2: First Light Imaging
     3: QHYCCD
     4: Allied Vision
+    5: Princeton Instruments
     """))
 
     if res==4:
@@ -477,13 +477,11 @@ if __name__ == '__main__':
             with cam:
                 print("Camera Loaded")
                 cam = cameras.Start("Allied", interface=interface, cam=cam)
-                app = QApplication(sys.argv)
-                gallery = WidgetGallery(cam)
-                gallery.show()
-                sys.exit(app.exec())
+                start_viewer(cam)
     else:
-        cam = cameras.Start(["Demo","FLI","QHY","Allied"][res-1])
-        app = QApplication(sys.argv)
-        gallery = WidgetGallery(cam)
-        gallery.show()
+        try:
+            cam = cameras.Start(["Demo","FLI","QHY","Allied","PI"][res-1])
+            start_viewer(cam)
+        finally:
+            cam.shutdown()
         sys.exit(app.exec())

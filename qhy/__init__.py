@@ -47,6 +47,8 @@ class QhyCam:
     def __init__(self):
         self.interface = cdll.LoadLibrary('.\\qhy\\qhyccd.dll')
 
+        self.img_radius = None  # for cropping
+
         # get camera id
         self.interface.GetQHYCCDId.argtypes = [ctypes.c_uint32, ctypes.c_char_p]
         # get handle via camera id

@@ -47,6 +47,8 @@ class FliCamera:
         self.context = context
         self._update_dims()
 
+        self.img_radius = None  # for cropping
+
         self.getFps = cam_func(self, FliSdk.FliSerialCamera.GetFps)
         self.setFps = cam_func(self, FliSdk.FliSerialCamera.SetFps)
 
