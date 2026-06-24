@@ -40,7 +40,6 @@ class PiCam:
             print('Preparing to connect Demo Camera')
             model = ctypes.c_int(10)
             serial_number = ctypes.c_char_p(b'Demo Cam 1')
-            PicamID = PicamCameraID()
             print('Demo camera connetcted with return value = ', Picam_ConnectDemoCamera(model, serial_number))
             print('\n')
 
@@ -67,7 +66,6 @@ class PiCam:
         self.readout_time_out = piint(100000)
 
         sz = readoutstride // 2
-        DataArrayType = pi16u * sz
         self.DataArrayPointerType = ctypes.POINTER(pi16u * sz)
 
     def Start(self):
@@ -122,13 +120,16 @@ class PiCam:
         self.exptime = Picam_GetParameterFloatingPointValue(self.camera, PicamParameter_ExposureTime)
         return self.exptime
     def getGain(self):
-        pass
+        return f"{Picam_GetParameterIntegerValue(self.camera, PicamParameter_AdcAnalogGain)}"
     def getTemp(self):
         return f"{Picam_GetParameterFloatingPointValue(self.camera, PicamParameter_SensorTemperatureReading)}, {Picam_GetParameterIntegerValue(self.camera, PicamParameter_SensorTemperatureStatus)}"
     def getTempSetpoint(self):
         return Picam_GetParameterFloatingPointValue(self.camera, PicamParameter_SensorTemperatureSetPoint)
     def getRoi(self):
-        pass
+        rois = Picam_GetParameterRoisValue(self.camera, PicamParameter_Rois, 1)
+        values = rois.roi_array.contents
+        #return f"{pi8s(values.x).value},{pi8u(values.y).value},{pi8u(values.width).value},{pi8u(values.height).value},{pi8u(values.x_binning).value},{pi8u(values.y_binning).value}"
+        return "?"
     def getShutter(self):
         pass
     def getHdr(self):
@@ -151,7 +152,14 @@ class PiCam:
         print(Picam_SetParameterFloatingPointValue(self.camera, PicamParameter_SensorTemperatureSetPoint, piflt(float(temp))))
         return
     def setRoi(self, roi):
-        pass
+        x,y,w,h,xbin,ybin = [piint(int(x)) for x in roi.split(',')]
+        value = PicamRoi(x,w,xbin,y,h,ybin)
+        array = PicamRois(num=1)
+        print(array.roi_array.contents.x)
+        array.roi_array.contents = value
+        print(array.roi_array.contents.x)
+        print(Picam_SetParameterRoisValue(self.camera, PicamParameter_Rois, ref(array)))
+        return
     def setHdr(self, hdr_mode):
         pass
     def setShutter(self, shutter):

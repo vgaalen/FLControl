@@ -272,7 +272,7 @@ def Picam_DestroyRois(rois):
 
 def Picam_GetParameterRoisValue(camera, parameter, num=4):
     """ PICAM_API Picam_GetParameterRoisValue( PicamHandle camera, PicamParameter parameter, const PicamRois** value) """
-    value = PicamRois(num=4)
+    value = PicamRois(num=num)
     err = picam.Picam_GetParameterRoisValue(camera, parameter, ref(value))
     return returnError(value, err)
 
