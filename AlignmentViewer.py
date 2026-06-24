@@ -39,7 +39,7 @@ class CtrlGroup:
         #self.label.setBuddy(self.output)
         grid.addWidget(self.label, row, 0)
         grid.addWidget(self.input, row, 1)
-        grid.addWidget(self.output, row, 2)
+        grid.addWidget(self.output, row, 2, 1, 2)
 
 class SliderGroup:
     def __init__(self, label: str, slider_range: tuple, box, grid, row, default_value=0, function=None):
@@ -258,7 +258,7 @@ class WidgetGallery(QDialog):
 
                 # fetch camera metadata
                 self.temp.output.setText(str(self.cam.getTemp()))
-                self.fps.output.setText(str(self.cam.getFps()))
+                self.fps.output.setText(str(np.round(self.cam.getFps(), 2)))
                 self.exptime.output.setText(str(self.cam.getExptime()))
                 self.gain.output.setText(str(self.cam.getGain()))
                 self.shutter.output.setText(str(self.cam.getShutter()))
