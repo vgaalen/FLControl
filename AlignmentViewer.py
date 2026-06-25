@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Optional, Literal
 import warnings
 import sys
+import logging
+log = logging.getLogger(__name__)
 
 plt.ion()
 
@@ -100,6 +102,7 @@ class WidgetGallery(QDialog):
         self.setWindowTitle(self.cam.name)
 
         self.running = False
+        self.loop = False
         # self.Start()
         # self.running = False
 
@@ -231,7 +234,8 @@ class WidgetGallery(QDialog):
     def Shutdown(self):
         self.Stop()
         self.cam.shutdown()
-        self.loop.join(timeout=60)
+        if self.loop:
+            self.loop.join(timeout=60)
         self.close()
 
     def Update(self, interval=1):
@@ -331,13 +335,13 @@ class WidgetGallery(QDialog):
                     try:
                         func(value)
                     except ValueError:
-                        print(f"[Warning] Unable to update {setting.label}")
+                        print(f"[Warning] Unable to update {func.__name__}: {setting.label}")
             else:
                 value = setting.input.currentText()
                 try:
                     func(value)
                 except ValueError:
-                    print(f"[Warning] Unable to update {setting.label}")
+                    print(f"[Warning] Unable to update {func.__name__}: {setting.label}")
         
         avg_setting = self.avg_selector.currentText().split("Avg ")[-1]
         self.avg_buffer = np.zeros((int(avg_setting),2))
@@ -452,6 +456,7 @@ def start_viewer(cam):
     sys.exit(app.exec())
 
 if __name__ == '__main__':
+    logging.basicConfig(filename="log.log", level=logging.INFO)
     print("Starting AlignmentViewer")
     warnings.filterwarnings("ignore", message="QBasicTimer::start: Timers cannot be started from another thread")
 
