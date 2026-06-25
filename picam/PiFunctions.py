@@ -1,4 +1,8 @@
 import ctypes as ctypes
+from datetime import datetime
+import logging
+log = logging.getLogger(__name__)
+
 from picam.PiTypes import *
 from picam.PiTypesMore import *
 
@@ -18,6 +22,8 @@ def returnError(value, err):
         return value
     else:
         mess = ReturnPicamError(err)
+        log.info(f" [{datetime.now()}] Picam Error, {err}: {mess}")
+        print(f"[WARNING] Picam Error {err}: {mess}")
         return mess
 
 
@@ -52,12 +58,28 @@ def Picam_DestroyString(s):
     err = picam.Picam_DestroyString(s)
     return returnError((),err)
 
-
-def Picam_GetEnumerationString(type, value, size=20):
+#picam.Picam_GetEnumerationString.argtypes = PicamEnumeratedType, piint, ctypes.c_char_p
+#picam.Picam_GetEnumerationString.restype = piint
+def Picam_GetEnumerationString(camera, parameter, value, size=1000):
     """ PICAM_API Picam_GetEnumerationString( PicamEnumeratedType type, piint value, const pichar** s) """
-    s = (pichar * size)([""] * size)
-    err = picam.Picam_GetEnumerationString(type, value, ref(s))
-    return returnError(s.value, err)
+    import numpy as np
+    enum_type = PicamEnumeratedType()
+    #s = (pichar * size)()#*([" ".encode()]*size))
+    #s = "PicamAdcAnalogGain_X".encode()#'utf-8')
+    #s = ctypes.create_string_buffer(size)
+    print(size)
+    s = (pichar * size)()#(*b"PicamAdcAnalogGain_X")
+    print(s.value.decode('utf-16'))
+
+    err = Picam_GetParameterEnumeratedType(camera, parameter, ref(enum_type))
+    if err == 0 or err == "PicamError_None":
+        err = picam.Picam_GetEnumerationString(enum_type, value, s)
+    else:
+        print(f"Error getting enum type for {parameter}, {err}")
+
+    print(s.value.decode('utf-16'))
+    #array = (pichar * 40).from_address(ctypes.addressof(s))
+    return returnError(s.value.decode('utf-16'), err) # , encoding='cp037'
 
 
 def Picam_DestroyCameraIDs(id_array):
@@ -495,11 +517,15 @@ def Picam_DestroyCollectionConstraints(constraint_array):
     return err
 
 
-def Picam_GetParameterCollectionConstraint(camera, parameter, category, constraint):
+def Picam_GetParameterCollectionConstraint(camera, parameter, level=3):
     """ PICAM_API Picam_GetParameterCollectionConstraint( PicamHandle camera, PicamParameter parameter, PicamConstraintCategory category, const PicamCollectionConstraint** constraint) """
-    err = picam.Picam_GetParameterCollectionConstraint(camera, parameter, category, constraint)
-    err = ReturnPicamError(err)
-    return err
+    category = piint(level) # 1: Values Ultimately Possible, 2: Currently Persmissible, 3: Recommended range
+    constraint = PicamCollectionConstraint(num=10)
+    err = picam.Picam_GetParameterCollectionConstraint(camera, parameter, category, ref(constraint))
+    print(err)
+    print(constraint.values_count)
+    print(constraint.values_array.contents)
+    return returnError(constraint.values_array, err)
 
 
 def Picam_DestroyRangeConstraints(constraint_array):

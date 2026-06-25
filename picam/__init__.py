@@ -24,21 +24,20 @@ class PiCam:
         self.latest_frame = np.zeros((1240,1240))
 
         self.name = f"picam"
-        self.Shutters = {'N/A': 0}
-        self.Modes = {'N/A': 0}
-        self.width, self.height = 1240, 1240
-
-        self.img_radius = None  # for cropping
-        self.latest_frame = np.zeros((self.height, self.width))
-
-        self.exptime = 0.
+        self.Shutters = {"PicamReadoutControlMode_Dif": 0, "PicamReadoutControlMode_ExposeDuringReadout": 1,
+                         "PicamReadoutControlMode_FrameTransfer": 2, "PicamReadoutControlMode_FullFrame": 3,
+                         "PicamReadoutControlMode_Interline": 4, "PicamReadoutControlMode_Kinetics": 5,
+                         "PicamReadoutControlMode_RollingShutter": 6, "PicamReadoutControlMode_SeNsR": 7,
+                         "PicamReadoutControlMode_SpectraKinetics S": 8}
+        self.Modes = {"ElectronMultiplied": 0, "HighCapacity": 1, "HighSpeed": 2, "LowNoise": 3}
 
         Picam_InitializeLibrary()
         cams, num_cams = Picam_GetAvailableCameraIDs()
         print(num_cams)
         if num_cams.value == 0:
             print('Preparing to connect Demo Camera')
-            model = ctypes.c_int(10)
+            #model = ctypes.c_int(10) # Pixis-1024
+            model = ctypes.c_int(2) # BLAZE 100HRX
             serial_number = ctypes.c_char_p(b'Demo Cam 1')
             print('Demo camera connetcted with return value = ', Picam_ConnectDemoCamera(model, serial_number))
             print('\n')
@@ -54,19 +53,29 @@ class PiCam:
         print('\n')
         self.name = f"PICAM - {self.camid.model}"
 
-        # failCount = piint()
-        # paramsFailed = piint()
-        # status = Picam_CommitParameters(self.camera, ptr(paramsFailed), ctypes.byref(failCount))
-        # print("commit returned ", status, "failCount is ", failCount)
+        self.width, self.height = (Picam_GetParameterIntegerValue(self.camera, PicamParameter_ActiveWidth),
+                                   Picam_GetParameterIntegerValue(self.camera, PicamParameter_ActiveHeight))
+        self.img_radius = None  # for cropping
+        self.latest_frame = np.zeros((self.height, self.width))
+        self.exptime = 0.
+
+        # Select available readout modes
+        print()
+        print("Mode Options")
+        mode_options = Picam_GetParameterCollectionConstraint(self.camera, PicamParameter_AdcQuality)
+        print(mode_options)
+        print()
 
         readoutstride = Picam_GetParameterIntegerValue(self.camera, ctypes.c_int(PicamParameter_ReadoutStride))
         print("The readoutstride is %d" % readoutstride)
 
         self.readout_count = pi64s(1)
-        self.readout_time_out = piint(100000)
+        self.readout_time_out = piint(10000)
 
         sz = readoutstride // 2
         self.DataArrayPointerType = ctypes.POINTER(pi16u * sz)
+
+        self.getGain()
 
     def Start(self):
         self.capture_status = True
@@ -84,7 +93,7 @@ class PiCam:
             Picam_Acquire(self.camera, self.readout_count, self.readout_time_out, ctypes.byref(available), ctypes.byref(errors))
 
             DataPointer = ctypes.cast(available.initial_readout, self.DataArrayPointerType)
-            self.latest_frame = np.array(DataPointer.contents).reshape((1024, 1024))
+            self.latest_frame = np.array(DataPointer.contents).reshape((self.height, self.width))
 
     def _loop2(self):
         while self.capture_status:
@@ -94,7 +103,7 @@ class PiCam:
             available = PicamAvailableData(0, 0)
             Picam_WaitForAcquisitionUpdate(self.camera, self.readout_time_out, ctypes.byref(available), ctypes.byref(status))
             DataPointer = ctypes.cast(available.initial_readout, self.DataArrayPointerType)
-            self.latest_frame = np.array(DataPointer.contents).reshape((1024, 1024))
+            self.latest_frame = np.array(DataPointer.contents).reshape((self.height, self.width))
 
     def Stop(self):
         self.capture_status = False
@@ -102,7 +111,7 @@ class PiCam:
     def shutdown(self):
         self.capture_status = False
         self.running = False
-        sleep(1)
+        sleep(1+(self.readout_time_out.value*0.001))
         Picam_UninitializeLibrary()
 
     def getImage(self):
@@ -120,7 +129,12 @@ class PiCam:
         self.exptime = Picam_GetParameterFloatingPointValue(self.camera, PicamParameter_ExposureTime)
         return self.exptime
     def getGain(self):
-        return f"{Picam_GetParameterIntegerValue(self.camera, PicamParameter_AdcAnalogGain)}"
+        value = Picam_GetParameterIntegerValue(self.camera, PicamParameter_AdcAnalogGain)
+        #return f"{Picam_GetEnumerationString(self.camera, PicamParameter_AdcAnalogGain, value)}, {value}"
+        if type(value) == int:
+            return f"{PicamEnum_AdcAnalogGain[value]}, {value}"
+        else:
+            return value
     def getTemp(self):
         return f"{Picam_GetParameterFloatingPointValue(self.camera, PicamParameter_SensorTemperatureReading)}, {Picam_GetParameterIntegerValue(self.camera, PicamParameter_SensorTemperatureStatus)}"
     def getTempSetpoint(self):
@@ -131,11 +145,20 @@ class PiCam:
         #return f"{pi8s(values.x).value},{pi8u(values.y).value},{pi8u(values.width).value},{pi8u(values.height).value},{pi8u(values.x_binning).value},{pi8u(values.y_binning).value}"
         return "?"
     def getShutter(self):
-        pass
+        value = Picam_GetParameterIntegerValue(self.camera, PicamParameter_ReadoutControlMode)
+        #return f"{Picam_GetEnumerationString(self.camera, PicamParameter_ReadoutControlMode, value)}, {value}"
+        if type(value) == int:
+            return f"{PicamEnum_ReadoutControlMode[value]}, {value}"
+        else:
+            return value
     def getHdr(self):
         pass
     def getMode(self):
-        pass
+        value = Picam_GetParameterIntegerValue(self.camera, PicamParameter_AdcQuality)
+        if type(value)==int:
+            return f"{PicamEnum_AdcQuality[value]}, {value}"
+        else:
+            return value
 
     def setFps(self, fps):
         print("Framerate is not settable")
@@ -145,6 +168,7 @@ class PiCam:
             self.Stop()
         Picam_SetParameterFloatingPointValue(self.camera, PicamParameter_ExposureTime, piflt(float(exptime)))
         self.exptime = exptime
+        self.readout_time_out = piint(int(exptime+1000))
         return
     def setGain(self, gain):
         pass
@@ -163,6 +187,6 @@ class PiCam:
     def setHdr(self, hdr_mode):
         pass
     def setShutter(self, shutter):
-        pass
+        Picam_SetParameterIntegerValue(self.camera, PicamParameter_ReadoutControlMode, int(self.Shutters[shutter]))
     def setMode(self, mode):
-        pass
+        Picam_SetParameterIntegerValue(self.camera, PicamParameter_ReadoutControlMode, int(self.Modes[mode]))

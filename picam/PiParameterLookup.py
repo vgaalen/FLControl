@@ -1,5 +1,18 @@
 import ctypes as ctypes
 
+# ENUMERATIONS
+PicamEnum_AdcAnalogGain = ["High", "Low", "Medium"]
+# PicamEnum_ReadoutControlMode = {"PicamReadoutControlMode_Dif": 0, "PicamReadoutControlMode_ExposeDuringReadout": 1,
+#                                 "PicamReadoutControlMode_FrameTransfer": 2, "PicamReadoutControlMode_FullFrame": 3,
+#                                 "PicamReadoutControlMode_Interline": 4, "PicamReadoutControlMode_Kinetics": 5,
+#                                 "PicamReadoutControlMode_RollingShutter": 6, "PicamReadoutControlMode_SeNsR": 7,
+#                                 "PicamReadoutControlMode_SpectraKinetics S": 8}
+PicamEnum_ReadoutControlMode = ["Dif", "ExposeDuringReadout",
+                                "FrameTransfer", "FullFrame",
+                                "Interline", "Kinetics",
+                                "RollingShutter", "SeNsR",
+                                "SpectraKinetics S"]
+PicamEnum_AdcQuality = ["ElectronMultiplied", "HighCapacity", "HighSpeed", "LowNoise"]
 
 ################################
 ##### PicamParameterLookup #####
