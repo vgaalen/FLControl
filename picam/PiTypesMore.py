@@ -120,7 +120,7 @@ class PicamAcquisitionStatus(ctypes.Structure):
                 ("readout_rate",piflt)]
 
 # PicamCollectionConstraint
-class PicamCollectionConstraint(ctypes.Structure):
+class PicamCollectionConstraint2(ctypes.Structure):
     _fields_ = [("scope", ctypes.c_void_p),
                 ("severity", ctypes.c_void_p),
                 ("values_array", ctypes.POINTER(piflt)),
@@ -128,3 +128,11 @@ class PicamCollectionConstraint(ctypes.Structure):
     def __init__(self, num):
         elems = (piflt * num)()
         self.values_array = ctypes.cast(elems,ctypes.POINTER(piflt))
+
+class PicamCollectionConstraint(ctypes.Structure):
+    _fields_ = [
+        ("scope", ctypes.c_int),    # PicamConstraintScope
+        ("severity", ctypes.c_int), # PicamConstraintSeverity
+        ("values_array", ctypes.POINTER(ctypes.c_double)), # piflt array [1]
+        ("values_count", ctypes.c_int) # piint [1]
+    ]

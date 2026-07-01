@@ -58,28 +58,31 @@ def Picam_DestroyString(s):
     err = picam.Picam_DestroyString(s)
     return returnError((),err)
 
-#picam.Picam_GetEnumerationString.argtypes = PicamEnumeratedType, piint, ctypes.c_char_p
-#picam.Picam_GetEnumerationString.restype = piint
+picam.Picam_GetParameterEnumeratedType.argtypes = (PicamHandle, piint, ctypes.POINTER(PicamEnumeratedType))
+picam.Picam_GetParameterEnumeratedType.restypes = piint
+picam.Picam_GetEnumerationString.argtypes = [
+    ctypes.c_int,  # PicamEnumeratedType (input)
+    ctypes.c_int,  # piint value (input)
+    ctypes.POINTER(ctypes.c_char_p)  # const pichar** s (output pointer)
+]
+picam.Picam_GetEnumerationString.restype = piint
 def Picam_GetEnumerationString(camera, parameter, value, size=1000):
     """ PICAM_API Picam_GetEnumerationString( PicamEnumeratedType type, piint value, const pichar** s) """
-    import numpy as np
     enum_type = PicamEnumeratedType()
-    #s = (pichar * size)()#*([" ".encode()]*size))
-    #s = "PicamAdcAnalogGain_X".encode()#'utf-8')
-    #s = ctypes.create_string_buffer(size)
-    print(size)
-    s = (pichar * size)()#(*b"PicamAdcAnalogGain_X")
-    print(s.value.decode('utf-16'))
+    string_ptr = ctypes.c_char_p()
 
-    err = Picam_GetParameterEnumeratedType(camera, parameter, ref(enum_type))
+    err = Picam_GetParameterEnumeratedType(camera, piint(parameter), ref(enum_type))
     if err == 0 or err == "PicamError_None":
-        err = picam.Picam_GetEnumerationString(enum_type, value, s)
+        err = picam.Picam_GetEnumerationString(
+            enum_type,
+            value,
+            ctypes.byref(string_ptr)
+        )
+        result = string_ptr.value.decode('utf-8')
     else:
         print(f"Error getting enum type for {parameter}, {err}")
-
-    print(s.value.decode('utf-16'))
-    #array = (pichar * 40).from_address(ctypes.addressof(s))
-    return returnError(s.value.decode('utf-16'), err) # , encoding='cp037'
+        result = ""
+    return returnError(result, err) # , encoding='cp037'
 
 
 def Picam_DestroyCameraIDs(id_array):
@@ -236,6 +239,8 @@ def Picam_GetParameterIntegerValue(camera, parameter):
 def Picam_SetParameterIntegerValue(camera, parameter, value):
     """ PICAM_API Picam_SetParameterIntegerValue( PicamHandle camera, PicamParameter parameter, piint value) """
     err = picam.Picam_SetParameterIntegerValue(camera, parameter, value)
+    if err != 0:
+        print(parameter, value)
     return returnError((), err)
 
 
@@ -519,13 +524,53 @@ def Picam_DestroyCollectionConstraints(constraint_array):
 
 def Picam_GetParameterCollectionConstraint(camera, parameter, level=3):
     """ PICAM_API Picam_GetParameterCollectionConstraint( PicamHandle camera, PicamParameter parameter, PicamConstraintCategory category, const PicamCollectionConstraint** constraint) """
-    category = piint(level) # 1: Values Ultimately Possible, 2: Currently Persmissible, 3: Recommended range
-    constraint = PicamCollectionConstraint(num=10)
-    err = picam.Picam_GetParameterCollectionConstraint(camera, parameter, category, ref(constraint))
-    print(err)
-    print(constraint.values_count)
-    print(constraint.values_array.contents)
-    return returnError(constraint.values_array, err)
+    # Category 1 = PicamConstraintCategory_Capable (all possible values) [3]
+    category = 1
+    constraint_ptr = ctypes.POINTER(PicamCollectionConstraint)()
+
+    error = picam.Picam_GetParameterCollectionConstraint(
+        camera,
+        parameter,
+        category,
+        ctypes.byref(constraint_ptr)
+    )
+
+    if error == 0 and constraint_ptr:
+        constraint = constraint_ptr.contents
+        values = []
+        names = []
+
+        enum_type = ctypes.c_int()
+        picam.Picam_GetParameterEnumeratedType(
+            camera, parameter, ctypes.byref(enum_type)
+        )
+        print(f"Found {constraint.values_count} allowable values:")
+
+        for i in range(constraint.values_count):
+            val = constraint.values_array[i]
+            name_string = ""
+
+            # If it's an enum, get the string representation [6]
+            if enum_type.value != 0:
+                name_ptr = ctypes.c_char_p()
+                picam.Picam_GetEnumerationString(
+                    enum_type.value, int(val), ctypes.byref(name_ptr)
+                )
+                name_string = name_ptr.value.decode('utf-8')
+                print(f" - {int(val)} ({name_string})")
+                picam.Picam_DestroyString(name_ptr)
+            else:
+                print(f" - {val}")
+
+            values.append(val)
+            names.append(name_string)
+
+        # 5. CRITICAL: Free library-allocated memory [7]
+        picam.Picam_DestroyCollectionConstraints(constraint_ptr)
+        return values, names
+    else:
+        print(f"No Collection constraint found or Error: {error}")
+        return []
 
 
 def Picam_DestroyRangeConstraints(constraint_array):
@@ -597,10 +642,10 @@ def Picam_CommitParameters(camera, failed_parameter_array, failed_parameter_coun
     return returnError((), err)
 
 
+picam.Picam_Acquire.argtypes = []
+picam.Picam_Acquire.restype = piint
 def Picam_Acquire(camera, readout_count, readout_time_out, available, errors):
     """ PICAM_API Picam_Acquire( PicamHandle camera, pi64s readout_count, piint readout_time_out, PicamAvailableData* available, PicamAcquisitionErrorsMask* errors) """
-    Picam_Acquire.argtypes = []
-    Picam_Acquire.restype = piint
     err = picam.Picam_Acquire(camera, readout_count, readout_time_out, available, errors)
     return returnError((), err)
 

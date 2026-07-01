@@ -170,7 +170,10 @@ class WidgetGallery(QDialog):
         self.temp = CtrlGroup("Sensor Temperature", layout, 0)
         self.fps = CtrlGroup("Framerate [Hz]", layout, 1)
         self.exptime = CtrlGroup("Exposure Time [ms]", layout, 2)
-        self.gain = CtrlGroup("Gain", layout, 3)
+        if 'PICAM' in self.cam.name:
+            self.gain = CtrlGroup("Gain", layout, 3, type="ComboBox", options=list(self.cam.Gains.keys()))
+        else:
+            self.gain = CtrlGroup("Gain", layout, 3)
         self.mode = CtrlGroup("Readout Mode", layout, 4, type="ComboBox", options=list(self.cam.Modes.keys()))
         self.shutter = CtrlGroup("Shutter Mode", layout, 5, type="ComboBox", options=list(self.cam.Shutters.keys()))
         self.roi = CtrlGroup("Region of Interest", layout, 6)
