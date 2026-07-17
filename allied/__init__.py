@@ -27,51 +27,53 @@ class AlliedCam:
                 self.gain = feat
             elif feat.get_name() == "SensorGain":
                 self.gain2 = feat
-            # "SensorTemperatureControlState"  "stable"
+                    # "SensorTemperatureControlState"  "stable"
 
-#             /// Feature name   : LUTSelector
-# /// Display name   : LUTSelector
-# /// Tooltip        : Selects which look-up table to control.
-# /// Description    : Selects which look-up table to control.
-# /// SFNC Namespace : Standard
-# /// Value          : Luminance
+        #             /// Feature name   : LUTSelector
+        # /// Display name   : LUTSelector
+        # /// Tooltip        : Selects which look-up table to control.
+        # /// Description    : Selects which look-up table to control.
+        # /// SFNC Namespace : Standard
+        # /// Value          : Luminance
 
-# /// Feature name   : NUCDatasetExposureTime
-# /// Display name   : NUCDatasetExposureTime
-# /// Tooltip        : Exposure time at acquisition of the data set indexed by NUCDatasetSelector. The data set should be selected, so that the actual exposure time setting corresponds to the reference value.
-# /// Description    : Exposure time at acquisition of the data set indexed by NUCDatasetSelector. The data set should be selected, so that the actual exposure time setting corresponds to the reference value.
-# /// SFNC Namespace : Custom
-# /// Value          : 1000.0
+        # /// Feature name   : NUCDatasetExposureTime
+        # /// Display name   : NUCDatasetExposureTime
+        # /// Tooltip        : Exposure time at acquisition of the data set indexed by NUCDatasetSelector. The data set should be selected, so that the actual exposure time setting corresponds to the reference value.
+        # /// Description    : Exposure time at acquisition of the data set indexed by NUCDatasetSelector. The data set should be selected, so that the actual exposure time setting corresponds to the reference value.
+        # /// SFNC Namespace : Custom
+        # /// Value          : 1000.0
 
-# /// Feature name   : AcquisitionFrameRate
-# /// Display name   : AcquisitionFrameRate
-# /// Tooltip        : Frame rate, in frames per second. This is applicable when either the FrameStart trigger mode is disabled, or the FrameStart trigger source is FixedRate. Depending on the exposure duration, the camera may not achieve the frame rate set here.
-# /// Description    : Frame rate, in frames per second. This is applicable when either the FrameStart trigger mode is disabled, or the FrameStart trigger source is FixedRate. Depending on the exposure duration, the camera may not achieve the frame rate set here.
-# /// SFNC Namespace : Standard
-# /// Value          : 37.8000378000378
+        # /// Feature name   : AcquisitionFrameRate
+        # /// Display name   : AcquisitionFrameRate
+        # /// Tooltip        : Frame rate, in frames per second. This is applicable when either the FrameStart trigger mode is disabled, or the FrameStart trigger source is FixedRate. Depending on the exposure duration, the camera may not achieve the frame rate set here.
+        # /// Description    : Frame rate, in frames per second. This is applicable when either the FrameStart trigger mode is disabled, or the FrameStart trigger source is FixedRate. Depending on the exposure duration, the camera may not achieve the frame rate set here.
+        # /// SFNC Namespace : Standard
+        # /// Value          : 37.8000378000378
 
-# /// Feature name   : AcquisitionFrameRateLimit
-# /// Display name   : AcquisitionFrameRateLimit
-# /// Tooltip        : This is the maximum frame rate possible for the current exposure duration and image format.
-# /// Description    : This is the maximum frame rate possible for the current exposure duration and image format.
-# /// SFNC Namespace : Custom
-# /// Value          : 41.63024020648599
+        # /// Feature name   : AcquisitionFrameRateLimit
+        # /// Display name   : AcquisitionFrameRateLimit
+        # /// Tooltip        : This is the maximum frame rate possible for the current exposure duration and image format.
+        # /// Description    : This is the maximum frame rate possible for the current exposure duration and image format.
+        # /// SFNC Namespace : Custom
+        # /// Value          : 41.63024020648599
 
-# /// Feature name   : ExposureTime
-# /// Display name   : ExposureTime
-# /// Tooltip        : Exposure duration, in microseconds.
-# /// Description    : Exposure duration, in microseconds.
-# /// SFNC Namespace : Standard
-# /// Value          : 10000.0
+        # /// Feature name   : ExposureTime
+        # /// Display name   : ExposureTime
+        # /// Tooltip        : Exposure duration, in microseconds.
+        # /// Description    : Exposure duration, in microseconds.
+        # /// SFNC Namespace : Standard
+        # /// Value          : 10000.0
 
 
         self.Shutters = {'N/A': 0}
         self.Modes = {'N/A': 0}
 
         self.width, self.height = self.cam.Width.get(), self.cam.Height.get()
+        
+        self.exptime_value = 10000
 
         self.frame = None
-        self.getImage()
+        #self.getImage()
 
     def Start(self):
         # self.cam.start_streaming()
@@ -96,7 +98,7 @@ class AlliedCam:
         pass
 
     def getImage(self):
-        frame = self.cam.get_frame()
+        frame = self.cam.get_frame(timeout_ms=int(np.ceil(2.5*self.exptime_value))+500)
         pointer = frame.get_buffer()
         data = np.frombuffer(pointer, dtype=np.uint16).reshape(self.height, self.width)
         return data
@@ -132,7 +134,9 @@ class AlliedCam:
     def getFps(self):
         return self.fps.get()
     def getExptime(self):
-        return self.exptime.get()/1000
+        self.exptime_value = self.exptime.get()/1000
+        return self.exptime_value
+
     def getGain(self):
         return f"{self.gain.get()} dB"
     def getTemp(self):
@@ -150,6 +154,7 @@ class AlliedCam:
     def setFps(self, fps):
         self.fps.set(float(fps))
     def setExptime(self, exptime):
+        self.exptime_value = int(exptime)
         exptime = float(exptime)
         if exptime > 1000/self.fps.get():
             self.setFps(1000/exptime)
